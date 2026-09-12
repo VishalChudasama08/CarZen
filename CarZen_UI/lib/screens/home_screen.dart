@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../data/dummy_cars.dart';
 import '../models/car.dart';
+import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/brand_list.dart';
 import '../widgets/car_card.dart';
@@ -10,6 +11,8 @@ import '../widgets/custom_app_bar.dart';
 import '../widgets/hero_banner.dart';
 import '../widgets/quick_filter_chips.dart';
 import '../widgets/section_header.dart';
+import 'login_screen.dart';
+import 'register_screen.dart';
 
 /// CarZen Home page.
 ///
@@ -26,6 +29,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final _authService = AuthService();
 
   late List<Car> _cars = dummyCars;
 
@@ -55,6 +59,57 @@ class _HomeScreenState extends State<HomeScreen> {
   void _handleExplore() {
     // TODO: navigate to the full car listing screen.
     debugPrint('Navigate to Explore Cars');
+  }
+
+  Future<void> _handleProfileTap() async {
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.login_rounded, color: AppColors.primary),
+              title: const Text('Login'),
+              onTap: () => Navigator.pop(context, 'login'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.person_add_alt_rounded, color: AppColors.primary),
+              title: const Text('Register'),
+              onTap: () => Navigator.pop(context, 'register'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.logout_rounded, color: AppColors.favorite),
+              title: const Text('Log Out'),
+              onTap: () => Navigator.pop(context, 'logout'),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+
+    if (!mounted || action == null) return;
+
+    switch (action) {
+      case 'login':
+        Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LoginScreen()));
+        break;
+      case 'register':
+        Navigator.of(context).push(MaterialPageRoute(builder: (_) => const RegisterScreen()));
+        break;
+      case 'logout':
+        await _authService.logout();
+        if (!mounted) return;
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (route) => false,
+        );
+        break;
+    }
   }
 
   @override
@@ -107,7 +162,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 location: 'Ahmedabad, GJ',
                 onLocationTap: () {},
                 onNotificationTap: () {},
-                onProfileTap: () {},
+                onProfileTap: _handleProfileTap,
               ),
               HeroBanner(onExplorePressed: _handleExplore),
               CarSearchBar(

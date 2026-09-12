@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'screens/home_screen.dart';
+import 'screens/splash_screen.dart';
 import 'theme/app_theme.dart';
 
 void main() {
@@ -15,7 +15,9 @@ class CarZenApp extends StatelessWidget {
       title: 'CarZen',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
-      home: const HomeScreen(),
+      // SplashScreen validates any stored token before deciding whether to
+      // open HomeScreen or LoginScreen — see services/auth_service.dart.
+      home: const SplashScreen(),
     );
   }
 }
