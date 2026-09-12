@@ -89,7 +89,7 @@ class AppTheme {
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       ),
-      colorSchemeSeed: AppColors.primary,
+      // colorSchemeSeed: AppColors.primary,
     );
   }
 }
