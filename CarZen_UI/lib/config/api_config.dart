@@ -17,5 +17,9 @@ class ApiConfig {
   static const String loginEndpoint = '$baseUrl/v1/auth/login';
   static const String validateEndpoint = '$baseUrl/v1/validate';
 
+  /// Convenience prefix for every other `/v1/...` endpoint added by the
+  /// car/catalog/marketplace/user services.
+  static const String v1 = '$baseUrl/v1';
+
   static const Duration requestTimeout = Duration(seconds: 15);
 }
