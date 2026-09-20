@@ -72,7 +72,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 if (_errorMessage != null) AuthErrorBanner(message: _errorMessage!),
                 AuthTextField(
                   controller: _currentController,
-                  label: 'Current Password',
+                  label: 'Current Password *',
                   hint: 'Enter your current password',
                   icon: Icons.lock_outline_rounded,
                   isPassword: true,
@@ -80,7 +80,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 ),
                 AuthTextField(
                   controller: _newController,
-                  label: 'New Password',
+                  label: 'New Password *',
                   hint: 'At least 8 characters',
                   icon: Icons.lock_outline_rounded,
                   isPassword: true,
@@ -88,7 +88,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 ),
                 AuthTextField(
                   controller: _confirmController,
-                  label: 'Confirm New Password',
+                  label: 'Confirm New Password *',
                   hint: 'Re-enter your new password',
                   icon: Icons.lock_outline_rounded,
                   isPassword: true,

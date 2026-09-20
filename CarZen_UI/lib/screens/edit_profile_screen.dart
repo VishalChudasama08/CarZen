@@ -74,7 +74,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 if (_errorMessage != null) AuthErrorBanner(message: _errorMessage!),
                 AuthTextField(
                   controller: _firstNameController,
-                  label: 'First Name',
+                  label: 'First Name *',
                   hint: 'Vishal',
                   icon: Icons.person_outline_rounded,
                   validator: (v) => Validators.required(v, message: 'First name is required'),

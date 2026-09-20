@@ -244,7 +244,7 @@ class _AddEditCarScreenState extends State<AddEditCarScreen> {
                           child: LinearProgressIndicator(color: AppColors.secondary),
                         )
                       : _CatalogDropdown<CatalogBrand>(
-                          label: 'Brand',
+                          label: 'Brand *',
                           value: _selectedBrand,
                           items: _brands,
                           itemLabel: (b) => b.name,
@@ -290,7 +290,7 @@ class _AddEditCarScreenState extends State<AddEditCarScreen> {
                 const SizedBox(height: 10),
                 AuthTextField(
                   controller: _yearController,
-                  label: 'Manufacturing Year',
+                  label: 'Manufacturing Year *',
                   hint: 'e.g. 2021',
                   icon: Icons.calendar_today_outlined,
                   keyboardType: TextInputType.number,
@@ -304,7 +304,7 @@ class _AddEditCarScreenState extends State<AddEditCarScreen> {
                 ),
                 AuthTextField(
                   controller: _mileageController,
-                  label: 'Mileage (km)',
+                  label: 'Mileage (km) *',
                   hint: 'e.g. 42000',
                   icon: Icons.speed_outlined,
                   keyboardType: TextInputType.number,
@@ -316,7 +316,7 @@ class _AddEditCarScreenState extends State<AddEditCarScreen> {
                   },
                 ),
                 _EnumDropdown<FuelType>(
-                  label: 'Fuel Type',
+                  label: 'Fuel Type *',
                   value: _fuelType,
                   values: FuelType.values,
                   labelOf: (f) => f.label,
@@ -324,7 +324,7 @@ class _AddEditCarScreenState extends State<AddEditCarScreen> {
                 ),
                 const SizedBox(height: 12),
                 _EnumDropdown<TransmissionType>(
-                  label: 'Transmission',
+                  label: 'Transmission *',
                   value: _transmission,
                   values: TransmissionType.values,
                   labelOf: (t) => t.label,
@@ -332,7 +332,7 @@ class _AddEditCarScreenState extends State<AddEditCarScreen> {
                 ),
                 const SizedBox(height: 12),
                 _EnumDropdown<CarCondition>(
-                  label: 'Condition',
+                  label: 'Condition *',
                   value: _condition,
                   values: const [
                     CarCondition.excellent,
@@ -348,7 +348,7 @@ class _AddEditCarScreenState extends State<AddEditCarScreen> {
                 const SizedBox(height: 12),
                 AuthTextField(
                   controller: _cityController,
-                  label: 'City',
+                  label: 'City *',
                   hint: 'Ahmedabad',
                   icon: Icons.location_city_outlined,
                   validator: (v) => Validators.required(v, message: 'City is required'),

@@ -40,9 +40,32 @@ class _AuthTextFieldState extends State<AuthTextField> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          widget.label,
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+        // Text(
+        //   widget.label,
+        //   style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+        // ),
+        RichText(
+          text: TextSpan(
+            children: [
+              TextSpan(
+                text: widget.label.replaceAll(' *', ''),
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              if (widget.label.endsWith(' *'))
+                TextSpan(
+                  text: ' *',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.normal,
+                    color: AppColors.textPrimary.withValues(alpha: 0.8),
+                  ),
+                ),
+            ],
+          ),
         ),
         const SizedBox(height: 6),
         TextFormField(

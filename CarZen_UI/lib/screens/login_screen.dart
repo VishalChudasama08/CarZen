@@ -87,7 +87,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 if (_errorMessage != null) AuthErrorBanner(message: _errorMessage!),
                 AuthTextField(
                   controller: _emailController,
-                  label: 'Email',
+                  label: 'Email *',
                   hint: 'you@example.com',
                   icon: Icons.mail_outline_rounded,
                   keyboardType: TextInputType.emailAddress,
@@ -95,7 +95,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 AuthTextField(
                   controller: _passwordController,
-                  label: 'Password',
+                  label: 'Password *',
                   hint: 'Enter your password',
                   icon: Icons.lock_outline_rounded,
                   isPassword: true,

@@ -105,7 +105,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 if (_errorMessage != null) AuthErrorBanner(message: _errorMessage!),
                 AuthTextField(
                   controller: _firstNameController,
-                  label: 'First Name',
+                  label: 'First Name *',
                   hint: 'Vishal',
                   icon: Icons.person_outline_rounded,
                   validator: (v) => Validators.required(v, message: 'First name is required'),
@@ -118,14 +118,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 AuthTextField(
                   controller: _usernameController,
-                  label: 'Username',
+                  label: 'Username *',
                   hint: 'vishal08',
                   icon: Icons.alternate_email_rounded,
                   validator: Validators.username,
                 ),
                 AuthTextField(
                   controller: _emailController,
-                  label: 'Email',
+                  label: 'Email *',
                   hint: 'you@example.com',
                   icon: Icons.mail_outline_rounded,
                   keyboardType: TextInputType.emailAddress,
@@ -141,7 +141,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 AuthTextField(
                   controller: _passwordController,
-                  label: 'Password',
+                  label: 'Password *',
                   hint: 'At least 8 characters',
                   icon: Icons.lock_outline_rounded,
                   isPassword: true,
@@ -149,7 +149,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 AuthTextField(
                   controller: _confirmPasswordController,
-                  label: 'Confirm Password',
+                  label: 'Confirm Password *',
                   hint: 'Re-enter your password',
                   icon: Icons.lock_outline_rounded,
                   isPassword: true,
