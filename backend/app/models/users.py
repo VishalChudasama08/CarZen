@@ -26,10 +26,11 @@ class User(Base):
     deleted_at = Column(DateTime, nullable=True) 
      
     # Relationships 
-    addresses = relationship("Addresses", back_populates="user", foreign_keys="Addresses.user_id")
+    addresses = relationship("Address",back_populates="user",foreign_keys="Address.user_id")
     cars_owned = relationship("Cars", back_populates="owner", foreign_keys="Cars.owner_id")
     listings = relationship("Listings", back_populates="seller", foreign_keys="Listings.seller_id")
-    ownership_history = relationship("OwnershipHistory", back_populates="owner", foreign_keys="OwnershipHistory.owner_id")
+    contact = relationship( "Contact",back_populates="user",foreign_keys="Contact.user_id",uselist=False)
+        
     service_centers = relationship("ServiceCenters", back_populates="owner", foreign_keys="ServiceCenters.owner_id")
     favorites = relationship("Favorites", back_populates="user", foreign_keys="Favorites.user_id")
     notifications = relationship("Notifications", back_populates="user", foreign_keys="Notifications.user_id")
@@ -37,9 +38,14 @@ class User(Base):
 
     inquiries_made = relationship("Inquiries", back_populates="buyer", foreign_keys="Inquiries.buyer_id")
     inquiries_received = relationship("Inquiries", back_populates="seller", foreign_keys="Inquiries.seller_id")
+    listing_views = relationship("ListingViews", back_populates="buyer", foreign_keys="ListingViews.buyer_id")
+    inquiry_messages = relationship("InquiryMessages", back_populates="sender", foreign_keys="InquiryMessages.sender_id")
 
     transactions_bought = relationship("Transactions", back_populates="buyer", foreign_keys="Transactions.buyer_id")
     transactions_sold = relationship("Transactions", back_populates="seller", foreign_keys="Transactions.seller_id")
+    orders_bought = relationship("Orders", back_populates="buyer", foreign_keys="Orders.buyer_id")
+    orders_sold = relationship("Orders", back_populates="seller", foreign_keys="Orders.seller_id")
+    payments = relationship("Payments", back_populates="user", foreign_keys="Payments.user_id")
 
     price_predictions = relationship("PricePredictions", back_populates="user", foreign_keys="PricePredictions.user_id")
     reviews = relationship("Reviews", back_populates="user", foreign_keys="Reviews.user_id")

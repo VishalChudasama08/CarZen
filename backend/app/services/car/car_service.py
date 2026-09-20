@@ -5,22 +5,20 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.models.car_brands import CarBrands
-from app.models.car_features import CarFeatures
-from app.models.car_media import CarMedia
 from app.models.car_models import CarModels
 from app.models.car_variants import CarVariants
 from app.models.cars import Cars
 from app.models.enums.CarEnums import CarApprovalStatus, CarCondition
+from app.models.enums.OrderEnums import NotificationType
 from app.models.enums.UserRoles import UserRoles
 from app.models.users import User
 from app.services.car.catalog_service import get_variant, paginate
+from app.services.notifications import notification_service
 
 
 def create_car(db: Session, owner: User, values: dict) -> Cars:
     values = _normalize_optional_identifiers(values)
-    
-    # _validate_creator_role(owner, values["condition"])  #user this fuunction for check the seller and reseller two different sellers
-    
+    ensure_seller_access(owner)
     _validate_years(values, None)
     
     _validate_resale_details(owner, values)
@@ -28,6 +26,21 @@ def create_car(db: Session, owner: User, values: dict) -> Cars:
     _ensure_unique_identifiers(db, values)
     car = Cars(owner_id=owner.id, approval_status=CarApprovalStatus.PENDING_APPROVAL, **values)
     db.add(car)
+    db.flush()
+    for (admin_id,) in db.query(User.id).filter(
+        User.role == UserRoles.ADMIN,
+        User.deleted_at.is_(None),
+    ).all():
+        notification_service.create_notification(
+            db,
+            admin_id,
+            NotificationType.ADMIN,
+            "Car awaiting approval",
+            "A newly submitted car is waiting for admin approval.",
+            car.id,
+            "car",
+        )
+    
     try:
         db.commit()
     except IntegrityError as exc:
@@ -42,6 +55,11 @@ def list_cars(db: Session, page: int, limit: int, owner_id: int | None = None, *
     if owner_id is not None: 
         query = query.filter(Cars.owner_id == owner_id)
     return paginate(query.order_by(Cars.id.desc()), page, limit)
+
+
+def ensure_seller_access(user: User) -> None:
+    if user.role != UserRoles.SELLER:
+        raise PermissionError("Seller access required to manage cars.")
 
 
 def get_car(db: Session, car_id: int) -> Cars:
@@ -61,18 +79,29 @@ def get_owned_car(db: Session, car_id: int, user: User, allow_admin: bool = Fals
 def update_car(db: Session, car_id: int, user: User, values: dict, allow_admin: bool = False) -> Cars:
     car = get_owned_car(db, car_id, user, allow_admin)
     values = _normalize_optional_identifiers(values)
-    if not values: raise ValueError("Provide at least one field to update.")
+    if not values: 
+        raise ValueError("Provide at least one field to update.")
+    if not allow_admin:
+        ensure_seller_access(user)
     _validate_years(values, car)
-    if "variant_id" in values: _validate_variant(db, values["variant_id"])
+    
+    if "variant_id" in values: 
+        _validate_variant(db, values["variant_id"])
+        
     _ensure_unique_identifiers(db, values, car.id)
+   
     important = {"variant_id", "registration_number", "vin_number", "manufacturing_year", "fuel_type", "transmission"}
-    for field, value in values.items(): setattr(car, field, value)
+    
+    for field, value in values.items(): 
+        setattr(car, field, value)
+        
     if important.intersection(values) and car.approval_status in {CarApprovalStatus.APPROVED, CarApprovalStatus.REJECTED}:
         car.approval_status = CarApprovalStatus.PENDING_APPROVAL
         car.is_verified = False
         car.rejection_reason = None
         car.verified_at = None
         car.verified_by_id = None
+        
     car.updated_at = datetime.now(timezone.utc)
     try:
         db.commit()
@@ -102,6 +131,15 @@ def approve_car(db: Session, car_id: int, admin: User) -> Cars:
     car.verified_at = datetime.now(timezone.utc)
     car.verified_by_id = admin.id
     car.updated_at = car.verified_at
+    notification_service.create_notification(
+        db,
+        car.owner_id,
+        NotificationType.LISTING,
+        "Car approved",
+        "Your car has been approved and can now be published as a listing.",
+        car.id,
+        "car",
+    )
     db.commit()
     db.refresh(car)
     
@@ -116,6 +154,15 @@ def reject_car(db: Session, car_id: int, admin: User, reason: str) -> Cars:
     car.verified_at = datetime.now(timezone.utc)
     car.verified_by_id = admin.id
     car.updated_at = car.verified_at
+    notification_service.create_notification(
+        db,
+        car.owner_id,
+        NotificationType.LISTING,
+        "Car rejected",
+        "Your car listing requires changes before it can be approved.",
+        car.id,
+        "car",
+    )
     db.commit()
     return get_car(db, car_id)
 
@@ -145,7 +192,7 @@ def detail_payload(car: Cars) -> dict:
 def _filtered_query(db: Session, search=None, verification_status=None, brand_id=None, model_id=None, variant_id=None, fuel_type=None, transmission=None, city=None, state=None, min_price=None, max_price=None, min_year=None, max_year=None, min_mileage=None, max_mileage=None, condition=None, approval_status=None):
     query = db.query(Cars).join(CarVariants).join(CarModels).join(CarBrands).filter(Cars.deleted_at.is_(None))
     if search:
-        query = query.filter(or_(Cars.registration_number.ilike(f"%{search}%"), Cars.vin_number.ilike(f"%{search}%"), CarModels.name.ilike(f"%{search}%"), CarBrands.name.ilike(f"%{search}%")))
+        query = query.filter(or_(Cars.registration_number.ilike(f"%{search}%"), Cars.vin_number.ilike(f"%{search}%"), CarBrands.name.ilike(f"%{search}%"), CarModels.name.ilike(f"%{search}%"), CarVariants.variant_name.ilike(f"%{search}%")))
     if verification_status is not None:
         query = query.filter(Cars.is_verified.is_(verification_status))
     if approval_status: 
@@ -247,22 +294,9 @@ def _ensure_approvable(car: Cars) -> None:
             "Car is missing required vehicle information: "
             + ", ".join(missing_fields)
         )
-        
-def _validate_creator_role(owner: User, condition: CarCondition) -> None:
-    if owner.role == UserRoles.SELLER:
-        if condition != CarCondition.NEW:
-            raise PermissionError("Sellers can add only new cars. Set condition to 'new'.")
-        return
-    if owner.role == UserRoles.RESELLER:
-        if condition != CarCondition.OLD:
-            raise PermissionError("Resellers can add only resale cars. Set condition to 'oldCar'.")
-        return
-    raise PermissionError("Only seller and reseller accounts can add cars.")
-
-
 def _validate_resale_details(owner: User, values: dict) -> None:
-    # if owner.role != UserRoles.RESELLER:
-    #     return
+    if values.get("condition") != CarCondition.OLD:
+        return
     required = ["registration_number", "vin_number", "registration_year", "ownership_type"]
     missing = [field for field in required if values.get(field) is None]
     if missing:
