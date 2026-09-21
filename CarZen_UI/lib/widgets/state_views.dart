@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
+import 'package:carzen_flutter/services/api_exception.dart';
+import 'package:carzen_flutter/theme/app_theme.dart';
 
 /// Centered spinner for full-page loading states.
 class LoadingView extends StatelessWidget {
@@ -91,5 +92,29 @@ class ErrorStateView extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// Turns any failure from a service call into the right state: a calm
+/// "not available for this account yet" message for legacy-role refusals,
+/// otherwise the API message (or [fallback]) with a Retry action.
+class ApiErrorView extends StatelessWidget {
+  final Object error;
+  final VoidCallback onRetry;
+  final String fallback;
+
+  const ApiErrorView({super.key, required this.error, required this.onRetry, this.fallback = 'Something went wrong.'});
+
+  @override
+  Widget build(BuildContext context) {
+    final e = error;
+    if (e is ApiException && e.isRoleRestriction) {
+      return EmptyStateView(
+        icon: Icons.lock_outline_rounded,
+        title: "Not available for this account yet",
+        message: e.message,
+      );
+    }
+    return ErrorStateView(message: e is ApiException ? e.message : fallback, onRetry: onRetry);
   }
 }

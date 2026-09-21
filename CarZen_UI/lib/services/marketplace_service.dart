@@ -1,6 +1,6 @@
-import '../models/enums.dart';
-import '../models/listing_models.dart';
-import '../models/pagination.dart';
+import 'package:carzen_flutter/models/enums.dart';
+import 'package:carzen_flutter/models/listing_models.dart';
+import 'package:carzen_flutter/models/pagination.dart';
 import 'api_client.dart';
 
 /// Talks to `/v1/cars/{id}/listing*`, the public `/v1/listings*`, and
@@ -64,10 +64,24 @@ class MarketplaceService {
     String? state,
     num? minPrice,
     num? maxPrice,
+    String? search,
+    int? minYear,
+    int? maxYear,
+    num? minMileage,
+    num? maxMileage,
+    CarCondition? condition,
+    ListingSort? sortBy,
   }) async {
     final json = await _client.get('/listings', query: {
       'page': page,
       'limit': limit,
+      'search': search,
+      'min_year': minYear,
+      'max_year': maxYear,
+      'min_mileage': minMileage,
+      'max_mileage': maxMileage,
+      'condition': condition?.apiValue,
+      'sort_by': sortBy?.apiValue,
       'brand_id': brandId,
       'model_id': modelId,
       'fuel_type': fuelType?.apiValue,
@@ -78,6 +92,22 @@ class MarketplaceService {
       'max_price': maxPrice,
     });
     return PaginatedList.fromJson(json as Map<String, dynamic>, Listing.fromJson);
+  }
+
+  /// The favorites payload only carries the car, not its listing, and the
+  /// backend has no public "listing by car" endpoint. Public listings are
+  /// scanned page by page (100 per page) until the car is found. Returns
+  /// `null` when the car is no longer publicly listed.
+  Future<int?> findPublicListingIdForCar(int carId) async {
+    var page = 1;
+    while (true) {
+      final result = await listPublicListings(page: page, limit: 100);
+      for (final listing in result.data) {
+        if (listing.carId == carId) return listing.id;
+      }
+      if (page >= result.pagination.totalPages) return null;
+      page++;
+    }
   }
 
   Future<ListingDetail> getPublicListing(int listingId) async {

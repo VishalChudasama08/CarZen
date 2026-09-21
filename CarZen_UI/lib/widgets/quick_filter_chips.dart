@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
+import 'package:carzen_flutter/theme/app_theme.dart';
+
+// These are filter labels, not vehicle data. Their values map directly to
+// the backend's listing query parameters in HomePage.
+const quickFilterPrices = ['Any Price', 'Under 5L', '5L - 10L', '10L - 20L', '20L+'];
+const quickFilterFuel = ['Any Fuel', 'Petrol', 'Diesel', 'Electric', 'CNG', 'Hybrid'];
+const quickFilterTransmission = ['Any', 'Manual', 'Automatic', 'AMT', 'CVT', 'DCT'];
 
 /// One quick-filter definition: a label, the list of choices, the current
 /// value and a callback fired when the user picks a new one.

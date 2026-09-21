@@ -1,3 +1,4 @@
+import 'package:carzen_flutter/utils/json_parsing.dart';
 import 'enums.dart';
 
 /// Mirrors `CarBrandResponse` (`GET/POST/PATCH /v1/car-brands`).
@@ -95,9 +96,9 @@ class CatalogVariant {
         variantName: json['variant_name'] as String,
         fuelType: FuelTypeX.fromApi(json['fuel_type'] as String),
         transmission: TransmissionTypeX.fromApi(json['transmission'] as String),
-        engineCc: json['engine_cc'] as num?,
-        horsepower: json['horsepower'] as num?,
+        engineCc: parseNumOrNull(json['engine_cc']),
+        horsepower: parseNumOrNull(json['horsepower']),
         seatingCapacity: json['seating_capacity'] as int?,
-        exShowroomPrice: json['ex_showroom_price'] as num?,
+        exShowroomPrice: parseNumOrNull(json['ex_showroom_price']),
       );
 }

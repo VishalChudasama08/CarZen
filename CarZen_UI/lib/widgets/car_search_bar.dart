@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
+import 'package:carzen_flutter/theme/app_theme.dart';
 
 /// Search field for car brand/model. Kept stateless and callback-driven so
 /// the parent screen owns the query string — that's where it will later

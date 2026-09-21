@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
+import 'package:carzen_flutter/theme/app_theme.dart';
 
 /// The large banner at the top of the Home page: a premium car photo with a
 /// dark gradient scrim, the "Find Your Perfect Car" headline, and a CTA

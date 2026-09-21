@@ -1,3 +1,4 @@
+import 'package:carzen_flutter/utils/json_parsing.dart';
 import 'enums.dart';
 
 /// Mirrors `CarMediaResponse` (`/v1/cars/{id}/media`).
@@ -38,23 +39,37 @@ class CarMedia {
   String absoluteUrl(String baseUrl) => mediaUrl.startsWith('http') ? mediaUrl : '$baseUrl$mediaUrl';
 }
 
+extension CarMediaListX on List<CarMedia> {
+  /// Best image for a card/thumbnail: the primary image, otherwise the first
+  /// image. Videos and documents are never used (they can't be shown by
+  /// `Image.network`).
+  CarMedia? get cover {
+    final images = where((m) => m.mediaType == MediaType.image).toList();
+    if (images.isEmpty) return null;
+    for (final image in images) {
+      if (image.isPrimary) return image;
+    }
+    return images.first;
+  }
+}
+
 /// Mirrors `CarFeatureResponse` (`/v1/cars/{id}/features`).
 class CarFeature {
   final int id;
-  final int carId;
+  final int? carId;
   final String featureName;
   final String? featureValue;
 
   const CarFeature({
     required this.id,
-    required this.carId,
+    this.carId,
     required this.featureName,
     this.featureValue,
   });
 
   factory CarFeature.fromJson(Map<String, dynamic> json) => CarFeature(
         id: json['id'] as int,
-        carId: json['car_id'] as int,
+        carId: json['car_id'] as int?,
         featureName: json['feature_name'] as String,
         featureValue: json['feature_value'] as String?,
       );
@@ -171,12 +186,12 @@ class CarRecord {
         registrationYear: json['registration_year'] as int?,
         fuelType: FuelTypeX.fromApi(json['fuel_type'] as String),
         transmission: TransmissionTypeX.fromApi(json['transmission'] as String),
-        mileageKm: json['mileage_km'] as num,
+        mileageKm: parseNum(json['mileage_km']),
         color: json['color'] as String?,
         condition: CarConditionX.fromApi(json['condition'] as String),
         city: json['city'] as String,
         state: json['state'] as String,
-        expectedMarketPrice: json['expected_market_price'] as num?,
+        expectedMarketPrice: parseNumOrNull(json['expected_market_price']),
         isVerified: json['is_verified'] as bool? ?? false,
         approvalStatus: CarApprovalStatusX.fromApi(json['approval_status'] as String),
       );
@@ -259,16 +274,16 @@ class CarRecordDetail extends CarRecord {
       registrationYear: json['registration_year'] as int?,
       fuelType: FuelTypeX.fromApi(json['fuel_type'] as String),
       transmission: TransmissionTypeX.fromApi(json['transmission'] as String),
-      mileageKm: json['mileage_km'] as num,
+      mileageKm: parseNum(json['mileage_km']),
       color: json['color'] as String?,
       condition: CarConditionX.fromApi(json['condition'] as String),
       city: json['city'] as String,
       state: json['state'] as String,
-      expectedMarketPrice: json['expected_market_price'] as num?,
+      expectedMarketPrice: parseNumOrNull(json['expected_market_price']),
       isVerified: json['is_verified'] as bool? ?? false,
       approvalStatus: CarApprovalStatusX.fromApi(json['approval_status'] as String),
-      engineCc: json['engine_cc'] as num?,
-      horsepower: json['horsepower'] as num?,
+      engineCc: parseNumOrNull(json['engine_cc']),
+      horsepower: parseNumOrNull(json['horsepower']),
       seatingCapacity: json['seating_capacity'] as int?,
       ownerCount: json['owner_count'] as int?,
       ownershipType:

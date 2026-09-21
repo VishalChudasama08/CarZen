@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
+import 'package:carzen_flutter/theme/app_theme.dart';
 
 /// Full-width CTA button used for "Login" / "Register" / "Explore Cars"
 /// style actions. Reuses the app's gold [ElevatedButton] theme and adds a

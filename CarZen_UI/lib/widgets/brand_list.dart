@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../models/car.dart';
-import '../theme/app_theme.dart';
+import 'package:carzen_flutter/models/car.dart';
+import 'package:carzen_flutter/theme/app_theme.dart';
 
 /// Horizontal list of brand logos for the "Popular Brands" section. Tapping
 /// a brand should filter the car listing by that brand once it's wired to

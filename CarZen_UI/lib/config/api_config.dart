@@ -11,11 +11,18 @@ class ApiConfig {
   /// backend (e.g. web, desktop, or an emulator with port-forwarding). On a
   /// physical device or the Android emulator, replace this with your
   /// machine's LAN IP (or `10.0.2.2` for the Android emulator).
-  static const String baseUrl = 'http://127.0.0.1:8000';
+  ///
+  /// Override at build/run time without touching code, e.g.
+  ///   flutter run -d chrome --dart-define=API_BASE_URL=http://127.0.0.1:8000
+  ///   flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000   (Android emulator)
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'http://127.0.0.1:8000',
+  );
 
   static const String registerEndpoint = '$baseUrl/v1/auth/register';
   static const String loginEndpoint = '$baseUrl/v1/auth/login';
-  static const String validateEndpoint = '$baseUrl/v1/validate';
+  static const String validateEndpoint = '$baseUrl/v1/auth/validate';
 
   /// Convenience prefix for every other `/v1/...` endpoint added by the
   /// car/catalog/marketplace/user services.

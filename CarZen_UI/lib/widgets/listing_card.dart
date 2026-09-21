@@ -1,8 +1,10 @@
+import 'package:carzen_flutter/utils/formatters.dart';
 import 'package:flutter/material.dart';
-import '../config/api_config.dart';
-import '../models/enums.dart';
-import '../models/listing_models.dart';
-import '../theme/app_theme.dart';
+import 'package:carzen_flutter/config/api_config.dart';
+import 'package:carzen_flutter/models/car_models.dart';
+import 'package:carzen_flutter/models/enums.dart';
+import 'package:carzen_flutter/models/listing_models.dart';
+import 'package:carzen_flutter/theme/app_theme.dart';
 
 /// Same visual language as the Home page's original (dummy-data) `CarCard`,
 /// but built for real backend data: a [ListingDetail] from
@@ -27,7 +29,7 @@ class ListingCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final car = listing.car;
-    final imageUrl = car.media.isEmpty ? null : car.media.first.absoluteUrl(ApiConfig.baseUrl);
+    final imageUrl = car.media.cover?.absoluteUrl(ApiConfig.baseUrl);
 
     return InkWell(
       onTap: onTap,
@@ -113,8 +115,13 @@ class ListingCard extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('₹${listing.askingPrice.toStringAsFixed(0)}',
-                          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15.5, color: AppColors.primary)),
+                      Flexible(
+                        child: Text(formatInr(listing.askingPrice),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15.5, color: AppColors.primary)),
+                      ),
+                      const SizedBox(width: 6),
                       Text(car.fuelType.label, style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary)),
                     ],
                   ),

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
+import 'package:carzen_flutter/theme/app_theme.dart';
 
 /// Standard "Title ... See all" row used above every horizontal section
 /// (Featured Cars, Popular Brands, Categories) to keep spacing consistent.

@@ -47,4 +47,6 @@ class UserResponse {
   }
 
   String get fullName => [firstName, lastName].where((e) => e != null && e.isNotEmpty).join(' ');
+
+  bool get isAdmin => role == 'admin';
 }

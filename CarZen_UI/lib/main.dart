@@ -1,8 +1,11 @@
+import 'package:carzen_flutter/routes/app_router.dart';
+import 'package:carzen_flutter/routes/app_routes.dart';
+import 'package:carzen_flutter/theme/app_theme.dart';
 import 'package:flutter/material.dart';
-import 'screens/splash_screen.dart';
-import 'theme/app_theme.dart';
+import 'package:url_strategy/url_strategy.dart';
 
 void main() {
+  setPathUrlStrategy();
   runApp(const CarZenApp());
 }
 
@@ -12,12 +15,13 @@ class CarZenApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'CarZen',
       debugShowCheckedModeBanner: false,
+      title: 'CarZen',
       theme: AppTheme.light(),
-      // SplashScreen validates any stored token before deciding whether to
-      // open HomeScreen or LoginScreen — see services/auth_service.dart.
-      home: const SplashScreen(),
+      initialRoute: AppRoutes.home,
+      onGenerateRoute: AppRouter.onGenerateRoute,
+      onGenerateInitialRoutes: AppRouter.onGenerateInitialRoutes,
+      onUnknownRoute: AppRouter.onUnknownRoute,
     );
   }
 }

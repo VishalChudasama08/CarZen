@@ -1,9 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
-import '../config/api_config.dart';
+import 'package:carzen_flutter/config/api_config.dart';
 import 'api_exception.dart';
 import 'secure_storage_service.dart';
 
@@ -98,12 +99,29 @@ class ApiClient {
     return _decode(response);
   }
 
+  /// The current backend still guards selling behind a `seller` role and
+  /// ordering behind a `user` role (see `auth_dependencies.py` and
+  /// `order_service.py`). The product decision is a single `user` role that can
+  /// buy and sell, so these particular 403s are surfaced with a clear message.
+  static final RegExp _legacyRoleDetail =
+      RegExp(r'(seller|reseller|service provider|buyer or user)[^.]*access required', caseSensitive: false);
+
+  static const String _legacyRoleMessage =
+      "This action isn't available for your account on the current server version yet. "
+      'It will work for every account once the backend update is deployed.';
+
   Future<http.Response> _run(Future<http.Response> Function() request) async {
     try {
       return await request();
+    } on TimeoutException {
+      throw const ApiException('The request timed out. Please try again.');
     } on SocketException {
       throw const ApiException('Cannot reach the server. Check your connection and try again.');
     } on HttpException {
+      throw const ApiException('Cannot reach the server. Check your connection and try again.');
+    } on http.ClientException {
+      // On Flutter Web (and any non-dart:io platform) a failed connection or a
+      // blocked CORS request surfaces as ClientException, not SocketException.
       throw const ApiException('Cannot reach the server. Check your connection and try again.');
     } on FormatException {
       throw const ApiException('Unexpected response from the server.');
@@ -122,13 +140,24 @@ class ApiClient {
     }
 
     if (status == 401) {
-      throw const ApiException('Authentication failed. Please log in again.', statusCode: 401);
+      // The stored token is expired or invalid: drop it so the UI stops
+      // presenting the user as signed in.
+      unawaited(_storage.deleteToken());
+      throw const ApiException('Your session has expired. Please log in again.', statusCode: 401);
     }
     if (status == 403) {
-      throw ApiException(_detail(response) ?? 'You do not have permission to do that.', statusCode: 403);
+      final detail = _detail(response);
+      if (detail != null && _legacyRoleDetail.hasMatch(detail)) {
+        throw const ApiException(_legacyRoleMessage, statusCode: 403, isRoleRestriction: true);
+      }
+      throw ApiException(detail ?? 'You do not have permission to do that.', statusCode: 403);
     }
     if (status == 404) {
       throw ApiException(_detail(response) ?? 'The requested item was not found.', statusCode: 404);
+    }
+
+    if (status >= 500) {
+      throw ApiException('The server could not complete the request. Please try again shortly.', statusCode: status);
     }
 
     throw ApiException(_detail(response) ?? 'Request failed (${response.statusCode}).', statusCode: status);

@@ -1,6 +1,6 @@
-import '../models/car_models.dart';
-import '../models/enums.dart';
-import '../models/pagination.dart';
+import 'package:carzen_flutter/models/car_models.dart';
+import 'package:carzen_flutter/models/enums.dart';
+import 'package:carzen_flutter/models/pagination.dart';
 import 'api_client.dart';
 
 /// Talks to `/v1/cars` (owner-scoped CRUD, media, features) and the
@@ -131,7 +131,11 @@ class CarService {
   }
 
   Future<CarMedia> setPrimaryMedia(int carId, int mediaId) async {
-    final json = await _client.patch('/cars/$carId/media/$mediaId/primary');
+    // The general media update route is registered before the convenience
+    // `/primary` route in the current FastAPI app. Using its documented
+    // `is_primary` field avoids a path-parameter 422 for the literal word
+    // "primary" while preserving the backend's intended operation.
+    final json = await _client.patch('/cars/$carId/media/$mediaId', body: {'is_primary': true});
     return CarMedia.fromJson(json as Map<String, dynamic>);
   }
 

@@ -92,13 +92,17 @@ extension CarApprovalStatusX on CarApprovalStatus {
 
 extension MediaTypeX on MediaType {
   String get apiValue => name;
-  static MediaType fromApi(String value) => MediaType.values.firstWhere((e) => e.apiValue == value);
+  static MediaType fromApi(String value) =>
+      MediaType.values.firstWhere((e) => e.apiValue == value, orElse: () => MediaType.document);
 }
 
 extension BodyTypeX on BodyType {
   String get apiValue => name;
-  String get label => name[0].toUpperCase() + name.substring(1);
-  static BodyType fromApi(String value) => BodyType.values.firstWhere((e) => e.apiValue == value);
+  String get label => (this == BodyType.suv || this == BodyType.muv)
+      ? name.toUpperCase()
+      : name[0].toUpperCase() + name.substring(1);
+  static BodyType fromApi(String value) =>
+      BodyType.values.firstWhere((e) => e.apiValue == value, orElse: () => BodyType.other);
 }
 
 extension ListingTypeX on ListingType {
@@ -112,4 +116,25 @@ extension ListingStatusX on ListingStatus {
   String get label => name[0].toUpperCase() + name.substring(1);
   static ListingStatus fromApi(String value) =>
       ListingStatus.values.firstWhere((e) => e.apiValue == value);
+}
+
+/// Mirrors `ListingSort` (`sort_by` query parameter of `GET /v1/listings`).
+enum ListingSort { newest, priceLowToHigh, priceHighToLow, yearNewest, mileageLowToHigh }
+
+extension ListingSortX on ListingSort {
+  String get apiValue => switch (this) {
+        ListingSort.newest => 'newest',
+        ListingSort.priceLowToHigh => 'price_low_to_high',
+        ListingSort.priceHighToLow => 'price_high_to_low',
+        ListingSort.yearNewest => 'year_newest',
+        ListingSort.mileageLowToHigh => 'mileage_low_to_high',
+      };
+
+  String get label => switch (this) {
+        ListingSort.newest => 'Newest first',
+        ListingSort.priceLowToHigh => 'Price: low to high',
+        ListingSort.priceHighToLow => 'Price: high to low',
+        ListingSort.yearNewest => 'Year: newest',
+        ListingSort.mileageLowToHigh => 'Mileage: lowest',
+      };
 }

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
+import 'package:carzen_flutter/theme/app_theme.dart';
 
 /// Small red banner used to show a user-friendly error message (invalid
 /// credentials, network error, validation error from the server, etc.)

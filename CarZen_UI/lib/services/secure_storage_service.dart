@@ -10,9 +10,7 @@ class SecureStorageService {
 
   static const _tokenKey = 'carzen_access_token';
 
-  final FlutterSecureStorage _storage = const FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
-  );
+  final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
   Future<void> saveToken(String token) => _storage.write(key: _tokenKey, value: token);
 

@@ -1,4 +1,4 @@
-import '../models/user_response.dart';
+import 'package:carzen_flutter/models/user_response.dart';
 import 'api_client.dart';
 
 /// Talks to `/v1/users/*` and `/v1/admin/users/*` (also

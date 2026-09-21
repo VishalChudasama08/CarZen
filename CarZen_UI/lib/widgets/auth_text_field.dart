@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
+import 'package:carzen_flutter/theme/app_theme.dart';
 
 /// Styled text field shared by Login and Register — same rounded card
 /// look as the rest of CarZen (matches [CarSearchBar]'s container style)

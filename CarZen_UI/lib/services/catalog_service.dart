@@ -1,5 +1,5 @@
-import '../models/catalog_models.dart';
-import '../models/pagination.dart';
+import 'package:carzen_flutter/models/catalog_models.dart';
+import 'package:carzen_flutter/models/pagination.dart';
 import 'api_client.dart';
 
 /// Talks to `/v1/car-brands`, `/v1/car-models`, `/v1/car-variants`.

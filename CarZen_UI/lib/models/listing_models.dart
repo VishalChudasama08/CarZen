@@ -1,3 +1,4 @@
+import 'package:carzen_flutter/utils/json_parsing.dart';
 import 'car_models.dart';
 import 'enums.dart';
 
@@ -36,7 +37,7 @@ class Listing {
         listingType: ListingTypeX.fromApi(json['listing_type'] as String),
         title: json['title'] as String,
         description: json['description'] as String?,
-        askingPrice: json['asking_price'] as num,
+        askingPrice: parseNum(json['asking_price']),
         negotiable: json['negotiable'] as bool? ?? true,
         listingStatus: ListingStatusX.fromApi(json['listing_status'] as String),
         viewsCount: json['views_count'] as int?,
@@ -57,9 +58,14 @@ class ListingCar {
   final FuelType fuelType;
   final TransmissionType transmission;
   final int manufacturingYear;
+  final int? registrationYear;
   final num mileageKm;
+  final num? engineCc;
+  final num? horsepower;
   final String? color;
   final int? seatingCapacity;
+  final int? ownerCount;
+  final OwnershipType? ownershipType;
   final CarCondition condition;
   final String city;
   final String state;
@@ -77,9 +83,14 @@ class ListingCar {
     required this.fuelType,
     required this.transmission,
     required this.manufacturingYear,
+    this.registrationYear,
     required this.mileageKm,
+    this.engineCc,
+    this.horsepower,
     this.color,
     this.seatingCapacity,
+    this.ownerCount,
+    this.ownershipType,
     required this.condition,
     required this.city,
     required this.state,
@@ -102,13 +113,20 @@ class ListingCar {
       fuelType: FuelTypeX.fromApi(json['fuel_type'] as String),
       transmission: TransmissionTypeX.fromApi(json['transmission'] as String),
       manufacturingYear: json['manufacturing_year'] as int,
-      mileageKm: json['mileage_km'] as num,
+      registrationYear: json['registration_year'] as int?,
+      mileageKm: parseNum(json['mileage_km']),
+      engineCc: parseNumOrNull(json['engine_cc']),
+      horsepower: parseNumOrNull(json['horsepower']),
       color: json['color'] as String?,
       seatingCapacity: json['seating_capacity'] as int?,
+      ownerCount: json['owner_count'] as int?,
+      ownershipType: json['ownership_type'] == null
+          ? null
+          : OwnershipTypeX.fromApi(json['ownership_type'] as String),
       condition: CarConditionX.fromApi(json['condition'] as String),
       city: json['city'] as String,
       state: json['state'] as String,
-      expectedMarketPrice: json['expected_market_price'] as num?,
+      expectedMarketPrice: parseNumOrNull(json['expected_market_price']),
       media: (json['media'] as List<dynamic>? ?? [])
           .map((e) => CarMedia.fromJson(e as Map<String, dynamic>))
           .toList(),
@@ -146,7 +164,7 @@ class ListingDetail extends Listing {
         listingType: ListingTypeX.fromApi(json['listing_type'] as String),
         title: json['title'] as String,
         description: json['description'] as String?,
-        askingPrice: json['asking_price'] as num,
+        askingPrice: parseNum(json['asking_price']),
         negotiable: json['negotiable'] as bool? ?? true,
         listingStatus: ListingStatusX.fromApi(json['listing_status'] as String),
         viewsCount: json['views_count'] as int?,

@@ -249,8 +249,6 @@ git clone https://github.com/VishalChudasama08/CarZen.git
 cd CarZen
 ```
 
----
-
 ### 2. Backend Setup
 
 Navigate to the backend directory:
