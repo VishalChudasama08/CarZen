@@ -1,0 +1,74 @@
+{
+  "id": 1,
+  "listing_id": 11,
+  "buyer_id": 9,
+  "seller_id": 7,
+  "subject": "Is the price negotiable?",
+  "message": "Hi, I like the City ZX. Is there any room on the price and is the service history complete?",
+  "status": "contacted",
+  "created_at": "2026-09-15T19:00:00",
+  "updated_at": "2026-09-15T19:00:00",
+  "listing": {
+    "id": 11,
+    "car_id": 21,
+    "seller_id": 7,
+    "listing_type": "resale",
+    "title": "2022 Honda City ZX CVT - Low Mileage",
+    "description": "Low-mileage City ZX with sunroof and Honda Sensing. Garage-kept and never modified.",
+    "asking_price": "1275000.00",
+    "negotiable": false,
+    "listing_status": "active",
+    "listed_at": "2026-09-01T16:00:00",
+    "expiry_date": "2026-12-31T23:59:59",
+    "views_count": 187,
+    "created_at": "2026-09-01T16:00:00",
+    "updated_at": "2026-09-01T16:00:00"
+  },
+  "seller": {
+    "id": 7,
+    "first_name": "Sneha",
+    "last_name": "Desai",
+    "username": "demo_sneha"
+  },
+  "messages": [
+    {
+      "id": 1,
+      "inquiry_id": 1,
+      "sender_id": 9,
+      "message": "Hi, I like the City ZX. Is there any room on the price and is the service history complete?",
+      "created_at": "2026-09-15T19:00:00",
+      "sender": {
+        "id": 9,
+        "first_name": "Neha",
+        "last_name": "Trivedi",
+        "username": "demo_neha"
+      }
+    },
+    {
+      "id": 2,
+      "inquiry_id": 1,
+      "sender_id": 7,
+      "message": "Hello Neha! The service history is complete, I can share the records. The price is fixed, but I can include a set of mats and a dashcam.",
+      "created_at": "2026-09-15T20:10:00",
+      "sender": {
+        "id": 7,
+        "first_name": "Sneha",
+        "last_name": "Desai",
+        "username": "demo_sneha"
+      }
+    },
+    {
+      "id": 3,
+      "inquiry_id": 1,
+      "sender_id": 9,
+      "message": "That works, thank you. I will visit on Sunday.",
+      "created_at": "2026-09-15T20:32:00",
+      "sender": {
+        "id": 9,
+        "first_name": "Neha",
+        "last_name": "Trivedi",
+        "username": "demo_neha"
+      }
+    }
+  ]
+}

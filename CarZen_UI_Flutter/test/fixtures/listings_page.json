@@ -1,0 +1,42 @@
+{
+  "data": [
+    {
+      "id": 7,
+      "car_id": 17,
+      "seller_id": 1,
+      "listing_type": "sale",
+      "title": "2024 Maruti Suzuki Baleno Alpha - Low Mileage",
+      "description": "Low-mileage Baleno Alpha with excellent condition, modern features and efficient petrol engine.",
+      "asking_price": "875000.00",
+      "negotiable": true,
+      "listing_status": "active",
+      "listed_at": "2026-09-12T11:20:41",
+      "expiry_date": "2026-12-11T11:20:41",
+      "views_count": 264,
+      "created_at": "2026-09-12T11:20:41",
+      "updated_at": "2026-09-12T11:20:41"
+    },
+    {
+      "id": 6,
+      "car_id": 16,
+      "seller_id": 1,
+      "listing_type": "sale",
+      "title": "2022 MG Hector Sharp Pro Automatic",
+      "description": "Spacious MG Hector with connected technology, automatic transmission and good maintenance history.",
+      "asking_price": "1540000.00",
+      "negotiable": true,
+      "listing_status": "active",
+      "listed_at": "2026-09-12T11:20:41",
+      "expiry_date": "2026-12-11T11:20:41",
+      "views_count": 178,
+      "created_at": "2026-09-12T11:20:41",
+      "updated_at": "2026-09-12T11:20:41"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 2,
+    "total": 19,
+    "total_pages": 10
+  }
+}

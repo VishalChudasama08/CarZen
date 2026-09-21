@@ -1,0 +1,119 @@
+{
+  "id": 13,
+  "car_id": 23,
+  "seller_id": 7,
+  "listing_type": "resale",
+  "title": "2023 Tata Nexon EV Long Range - With Home Charger",
+  "description": "Long-range Nexon EV with home charger included. Battery health verified at service centre.",
+  "asking_price": "1325000.00",
+  "negotiable": true,
+  "listing_status": "active",
+  "listed_at": "2026-09-03T10:45:00",
+  "expiry_date": "2026-12-31T23:59:59",
+  "views_count": 206,
+  "created_at": "2026-09-03T10:45:00",
+  "updated_at": "2026-09-20T11:03:16",
+  "car": {
+    "id": 23,
+    "brand": {
+      "id": 4,
+      "name": "Tata",
+      "slug": "tata",
+      "logo_url": "https://upload.wikimedia.org/wikipedia/commons/8/83/Tata_Motors_Logo.svg"
+    },
+    "model": {
+      "id": 1,
+      "name": "Nexon",
+      "slug": "nexon",
+      "body_type": "suv",
+      "seating_capacity": 5
+    },
+    "variant": {
+      "id": 13,
+      "variant_name": "Empowered LR Electric",
+      "fuel_type": "electric",
+      "transmission": "automatic",
+      "engine_cc": null,
+      "horsepower": "143.00",
+      "seating_capacity": 5
+    },
+    "registration_number": "GJ18DM1006",
+    "vin_number": "DEMOVIN2023GJ00006",
+    "manufacturing_year": 2023,
+    "registration_year": 2023,
+    "fuel_type": "electric",
+    "transmission": "automatic",
+    "engine_cc": null,
+    "horsepower": "143.00",
+    "mileage_km": "14200.00",
+    "color": "Teal Blue",
+    "seating_capacity": 5,
+    "owner_count": 1,
+    "ownership_type": "first_owner",
+    "condition": "excellent",
+    "insurance_company": "ICICI Lombard",
+    "insurance_type": "comprehensive",
+    "insurance_expiry": "2027-11-11T00:00:00",
+    "rc_status": "valid",
+    "city": "Gandhinagar",
+    "state": "Gujarat",
+    "country": "India",
+    "postal_code": "382010",
+    "description": "Long-range Nexon EV with home charger included. Battery health verified at service centre.",
+    "expected_market_price": "1350000.00",
+    "media": [
+      {
+        "id": 28,
+        "media_type": "image",
+        "media_url": "https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?auto=format&fit=crop&w=1200&q=85",
+        "thumbnail_url": "https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?auto=format&fit=crop&w=500&q=75",
+        "file_name": "nexon-front.jpg",
+        "file_size": 216500,
+        "sort_order": 0,
+        "is_primary": true
+      },
+      {
+        "id": 29,
+        "media_type": "image",
+        "media_url": "https://images.unsplash.com/photo-1502877338535-766e1452684a?auto=format&fit=crop&w=1200&q=85",
+        "thumbnail_url": "https://images.unsplash.com/photo-1502877338535-766e1452684a?auto=format&fit=crop&w=500&q=75",
+        "file_name": "nexon-side.jpg",
+        "file_size": 253500,
+        "sort_order": 1,
+        "is_primary": false
+      },
+      {
+        "id": 30,
+        "media_type": "image",
+        "media_url": "https://images.unsplash.com/photo-1542282088-fe8426682b8f?auto=format&fit=crop&w=1200&q=85",
+        "thumbnail_url": "https://images.unsplash.com/photo-1542282088-fe8426682b8f?auto=format&fit=crop&w=500&q=75",
+        "file_name": "nexon-rear.jpg",
+        "file_size": 290500,
+        "sort_order": 2,
+        "is_primary": false
+      }
+    ],
+    "features": [
+      {
+        "id": 56,
+        "feature_name": "Battery",
+        "feature_value": "40.5 kWh Long Range"
+      },
+      {
+        "id": 57,
+        "feature_name": "Charging",
+        "feature_value": "Home Charger Included"
+      },
+      {
+        "id": 58,
+        "feature_name": "Infotainment",
+        "feature_value": "10.25 inch Touchscreen"
+      },
+      {
+        "id": 59,
+        "feature_name": "Camera",
+        "feature_value": "360 Degree Camera"
+      }
+    ]
+  }
+}

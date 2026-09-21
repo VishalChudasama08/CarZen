@@ -1,0 +1,410 @@
+{
+  "data": [
+    {
+      "id": 8,
+      "listing_id": 21,
+      "car_id": 34,
+      "buyer_id": 9,
+      "seller_id": 12,
+      "amount": "850000.00",
+      "status": "confirmed",
+      "payment_status": "pending",
+      "notes": null,
+      "created_at": "2026-09-20T10:59:41",
+      "updated_at": "2026-09-20T10:59:41",
+      "completed_at": null,
+      "buyer": {
+        "id": 9,
+        "first_name": "Neha",
+        "last_name": "Trivedi",
+        "username": "demo_neha"
+      },
+      "seller": {
+        "id": 12,
+        "first_name": "Flow",
+        "last_name": null,
+        "username": "flowseller"
+      },
+      "listing": {
+        "id": 21,
+        "car_id": 34,
+        "seller_id": 12,
+        "listing_type": "resale",
+        "title": "Flow test car",
+        "description": "d",
+        "asking_price": "850000.00",
+        "negotiable": true,
+        "listing_status": "reserved",
+        "listed_at": "2026-09-20T10:59:40",
+        "expiry_date": null,
+        "views_count": 1,
+        "created_at": "2026-09-20T10:59:40",
+        "updated_at": "2026-09-20T10:59:41"
+      },
+      "car": {
+        "id": 34,
+        "brand": {
+          "id": 4,
+          "name": "Tata",
+          "slug": "tata",
+          "logo_url": "https://upload.wikimedia.org/wikipedia/commons/8/83/Tata_Motors_Logo.svg"
+        },
+        "model": {
+          "id": 1,
+          "name": "Nexon",
+          "slug": "nexon",
+          "body_type": "suv",
+          "seating_capacity": 5
+        },
+        "variant": {
+          "id": 3,
+          "variant_name": "Creative 1.2 Petrol DCA",
+          "fuel_type": "petrol",
+          "transmission": "dct",
+          "engine_cc": "1199.00",
+          "horsepower": "120.00",
+          "seating_capacity": 5
+        },
+        "registration_number": "GJ01ZZ9999",
+        "vin_number": null,
+        "manufacturing_year": 2022,
+        "registration_year": null,
+        "fuel_type": "petrol",
+        "transmission": "manual",
+        "engine_cc": null,
+        "horsepower": null,
+        "mileage_km": "15000.00",
+        "color": "Red",
+        "seating_capacity": 5,
+        "owner_count": 1,
+        "ownership_type": null,
+        "condition": "good",
+        "insurance_company": null,
+        "insurance_type": null,
+        "insurance_expiry": null,
+        "rc_status": null,
+        "city": "Ahmedabad",
+        "state": "Gujarat",
+        "country": "India",
+        "postal_code": null,
+        "description": "flow test",
+        "expected_market_price": "900000.00",
+        "media": [
+          {
+            "id": 54,
+            "media_type": "image",
+            "media_url": "/uploads/cars/34/f626e074db634def89d3fe12b1bec0bb.png",
+            "thumbnail_url": null,
+            "file_name": "t.png",
+            "file_size": 70,
+            "sort_order": 0,
+            "is_primary": true
+          }
+        ],
+        "features": [
+          {
+            "id": 88,
+            "feature_name": "Sunroof",
+            "feature_value": "Electric"
+          }
+        ]
+      }
+    },
+    {
+      "id": 1,
+      "listing_id": 8,
+      "car_id": 18,
+      "buyer_id": 9,
+      "seller_id": 4,
+      "amount": "1400000.00",
+      "status": "pending",
+      "payment_status": "pending",
+      "notes": "Interested - can I inspect the car this weekend?",
+      "created_at": "2026-09-16T10:30:00",
+      "updated_at": "2026-09-16T10:30:00",
+      "completed_at": null,
+      "buyer": {
+        "id": 9,
+        "first_name": "Neha",
+        "last_name": "Trivedi",
+        "username": "demo_neha"
+      },
+      "seller": {
+        "id": 4,
+        "first_name": "Rohan",
+        "last_name": "Mehta",
+        "username": "demo_rohan"
+      },
+      "listing": {
+        "id": 8,
+        "car_id": 18,
+        "seller_id": 4,
+        "listing_type": "resale",
+        "title": "2021 Tata Harrier Adventure Diesel MT - Single Owner",
+        "description": "Single-owner Harrier with full service history at the authorised workshop. Comfortable highway car with plenty of torque.",
+        "asking_price": "1425000.00",
+        "negotiable": true,
+        "listing_status": "active",
+        "listed_at": "2026-08-29T10:00:00",
+        "expiry_date": "2026-12-31T23:59:59",
+        "views_count": 118,
+        "created_at": "2026-08-29T10:00:00",
+        "updated_at": "2026-08-29T10:00:00"
+      },
+      "car": {
+        "id": 18,
+        "brand": {
+          "id": 4,
+          "name": "Tata",
+          "slug": "tata",
+          "logo_url": "https://upload.wikimedia.org/wikipedia/commons/8/83/Tata_Motors_Logo.svg"
+        },
+        "model": {
+          "id": 3,
+          "name": "Harrier",
+          "slug": "harrier",
+          "body_type": "suv",
+          "seating_capacity": 5
+        },
+        "variant": {
+          "id": 14,
+          "variant_name": "Adventure 2.0 Diesel MT",
+          "fuel_type": "diesel",
+          "transmission": "manual",
+          "engine_cc": "1956.00",
+          "horsepower": "168.00",
+          "seating_capacity": 5
+        },
+        "registration_number": "GJ01DM1001",
+        "vin_number": "DEMOVIN2021GJ00001",
+        "manufacturing_year": 2021,
+        "registration_year": 2021,
+        "fuel_type": "diesel",
+        "transmission": "manual",
+        "engine_cc": "1956.00",
+        "horsepower": "168.00",
+        "mileage_km": "48000.00",
+        "color": "Lunar White",
+        "seating_capacity": 5,
+        "owner_count": 1,
+        "ownership_type": "first_owner",
+        "condition": "good",
+        "insurance_company": "ICICI Lombard",
+        "insurance_type": "comprehensive",
+        "insurance_expiry": "2027-05-14T00:00:00",
+        "rc_status": "valid",
+        "city": "Ahmedabad",
+        "state": "Gujarat",
+        "country": "India",
+        "postal_code": "380054",
+        "description": "Single-owner Harrier with full service history at the authorised workshop. Comfortable highway car with plenty of torque.",
+        "expected_market_price": "1450000.00",
+        "media": [
+          {
+            "id": 13,
+            "media_type": "image",
+            "media_url": "https://images.unsplash.com/photo-1619767886558-efdc259cde1a?auto=format&fit=crop&w=1200&q=85",
+            "thumbnail_url": "https://images.unsplash.com/photo-1619767886558-efdc259cde1a?auto=format&fit=crop&w=500&q=75",
+            "file_name": "harrier-front.jpg",
+            "file_size": 210000,
+            "sort_order": 0,
+            "is_primary": true
+          },
+          {
+            "id": 14,
+            "media_type": "image",
+            "media_url": "https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?auto=format&fit=crop&w=1200&q=85",
+            "thumbnail_url": "https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?auto=format&fit=crop&w=500&q=75",
+            "file_name": "harrier-side.jpg",
+            "file_size": 247000,
+            "sort_order": 1,
+            "is_primary": false
+          },
+          {
+            "id": 15,
+            "media_type": "image",
+            "media_url": "https://images.unsplash.com/photo-1542362567-b07e54358753?auto=format&fit=crop&w=1200&q=85",
+            "thumbnail_url": "https://images.unsplash.com/photo-1542362567-b07e54358753?auto=format&fit=crop&w=500&q=75",
+            "file_name": "harrier-rear.jpg",
+            "file_size": 284000,
+            "sort_order": 2,
+            "is_primary": false
+          }
+        ],
+        "features": [
+          {
+            "id": 36,
+            "feature_name": "Airbags",
+            "feature_value": "6 Airbags"
+          },
+          {
+            "id": 37,
+            "feature_name": "Infotainment",
+            "feature_value": "8.8 inch Touchscreen"
+          },
+          {
+            "id": 38,
+            "feature_name": "Sunroof",
+            "feature_value": "Panoramic Sunroof"
+          },
+          {
+            "id": 39,
+            "feature_name": "Drive Modes",
+            "feature_value": "Eco / City / Sport"
+          }
+        ]
+      }
+    },
+    {
+      "id": 4,
+      "listing_id": 20,
+      "car_id": 30,
+      "buyer_id": 9,
+      "seller_id": 5,
+      "amount": "595000.00",
+      "status": "completed",
+      "payment_status": "paid",
+      "notes": "Payment done, RC transfer completed.",
+      "created_at": "2026-09-01T09:20:00",
+      "updated_at": "2026-09-09T17:00:00",
+      "completed_at": "2026-09-09T17:00:00",
+      "buyer": {
+        "id": 9,
+        "first_name": "Neha",
+        "last_name": "Trivedi",
+        "username": "demo_neha"
+      },
+      "seller": {
+        "id": 5,
+        "first_name": "Priya",
+        "last_name": "Shah",
+        "username": "demo_priya"
+      },
+      "listing": {
+        "id": 20,
+        "car_id": 30,
+        "seller_id": 5,
+        "listing_type": "resale",
+        "title": "2021 Tata Tiago XZ+ AMT - Sold",
+        "description": "Neat Tiago AMT with new tyres and fresh service. Sold through CarZen.",
+        "asking_price": "595000.00",
+        "negotiable": false,
+        "listing_status": "sold",
+        "listed_at": "2026-08-28T10:00:00",
+        "expiry_date": null,
+        "views_count": 204,
+        "created_at": "2026-08-28T10:00:00",
+        "updated_at": "2026-08-28T10:00:00"
+      },
+      "car": {
+        "id": 30,
+        "brand": {
+          "id": 4,
+          "name": "Tata",
+          "slug": "tata",
+          "logo_url": "https://upload.wikimedia.org/wikipedia/commons/8/83/Tata_Motors_Logo.svg"
+        },
+        "model": {
+          "id": 22,
+          "name": "Tiago",
+          "slug": "tata-tiago",
+          "body_type": "hatchback",
+          "seating_capacity": 5
+        },
+        "variant": {
+          "id": 30,
+          "variant_name": "XZ+ 1.2 Petrol AMT",
+          "fuel_type": "petrol",
+          "transmission": "amt",
+          "engine_cc": "1199.00",
+          "horsepower": "84.00",
+          "seating_capacity": 5
+        },
+        "registration_number": "GJ01DM1013",
+        "vin_number": "DEMOVIN2021GJ00013",
+        "manufacturing_year": 2021,
+        "registration_year": 2021,
+        "fuel_type": "petrol",
+        "transmission": "amt",
+        "engine_cc": "1199.00",
+        "horsepower": "84.00",
+        "mileage_km": "30900.00",
+        "color": "Daytona Grey",
+        "seating_capacity": 5,
+        "owner_count": 1,
+        "ownership_type": "first_owner",
+        "condition": "good",
+        "insurance_company": "ICICI Lombard",
+        "insurance_type": "comprehensive",
+        "insurance_expiry": "2027-01-15T00:00:00",
+        "rc_status": "valid",
+        "city": "Ahmedabad",
+        "state": "Gujarat",
+        "country": "India",
+        "postal_code": "380009",
+        "description": "Neat Tiago AMT with new tyres and fresh service. Sold through CarZen.",
+        "expected_market_price": "595000.00",
+        "media": [
+          {
+            "id": 49,
+            "media_type": "image",
+            "media_url": "https://images.unsplash.com/photo-1619767886558-efdc259cde1a?auto=format&fit=crop&w=1200&q=85",
+            "thumbnail_url": "https://images.unsplash.com/photo-1619767886558-efdc259cde1a?auto=format&fit=crop&w=500&q=75",
+            "file_name": "tata-tiago-front.jpg",
+            "file_size": 225600,
+            "sort_order": 0,
+            "is_primary": true
+          },
+          {
+            "id": 50,
+            "media_type": "image",
+            "media_url": "https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?auto=format&fit=crop&w=1200&q=85",
+            "thumbnail_url": "https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?auto=format&fit=crop&w=500&q=75",
+            "file_name": "tata-tiago-side.jpg",
+            "file_size": 262600,
+            "sort_order": 1,
+            "is_primary": false
+          },
+          {
+            "id": 51,
+            "media_type": "image",
+            "media_url": "https://images.unsplash.com/photo-1542362567-b07e54358753?auto=format&fit=crop&w=1200&q=85",
+            "thumbnail_url": "https://images.unsplash.com/photo-1542362567-b07e54358753?auto=format&fit=crop&w=500&q=75",
+            "file_name": "tata-tiago-rear.jpg",
+            "file_size": 299600,
+            "sort_order": 2,
+            "is_primary": false
+          }
+        ],
+        "features": [
+          {
+            "id": 84,
+            "feature_name": "Airbags",
+            "feature_value": "Dual Airbags"
+          },
+          {
+            "id": 85,
+            "feature_name": "Infotainment",
+            "feature_value": "7 inch Touchscreen"
+          },
+          {
+            "id": 86,
+            "feature_name": "Transmission",
+            "feature_value": "AMT"
+          },
+          {
+            "id": 87,
+            "feature_name": "Camera",
+            "feature_value": "Rear Parking Camera"
+          }
+        ]
+      }
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 3,
+    "total_pages": 1
+  }
+}

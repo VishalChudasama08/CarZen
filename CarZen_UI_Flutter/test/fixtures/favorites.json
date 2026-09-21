@@ -1,0 +1,202 @@
+[
+  {
+    "id": 13,
+    "user_id": 9,
+    "car_id": 28,
+    "created_at": "2026-09-17T17:15:00",
+    "car": {
+      "id": 28,
+      "brand": {
+        "id": 5,
+        "name": "Mahindra",
+        "slug": "mahindra",
+        "logo_url": "https://upload.wikimedia.org/wikipedia/commons/5/5f/Mahindra_%26_Mahindra_Logo.svg"
+      },
+      "model": {
+        "id": 11,
+        "name": "XUV700",
+        "slug": "xuv700",
+        "body_type": "suv",
+        "seating_capacity": 7
+      },
+      "variant": {
+        "id": 24,
+        "variant_name": "AX7 2.0 Petrol AT",
+        "fuel_type": "petrol",
+        "transmission": "automatic",
+        "engine_cc": "1999.00",
+        "horsepower": "200.00",
+        "seating_capacity": 7
+      },
+      "manufacturing_year": 2022,
+      "fuel_type": "petrol",
+      "transmission": "automatic",
+      "engine_cc": "1999.00",
+      "horsepower": "200.00",
+      "mileage_km": "24100.00",
+      "color": "Everest White",
+      "seating_capacity": 7,
+      "condition": "excellent",
+      "city": "Surat",
+      "state": "Gujarat",
+      "country": "India",
+      "postal_code": "395009",
+      "description": "Loaded AX7 with ADAS, panoramic sunroof and 7 seats. Immaculate condition.",
+      "expected_market_price": "1925000.00",
+      "media": [
+        {
+          "id": 43,
+          "media_type": "image",
+          "media_url": "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=1200&q=85",
+          "thumbnail_url": "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=500&q=75",
+          "file_name": "xuv700-front.jpg",
+          "file_size": 223000,
+          "sort_order": 0,
+          "is_primary": true
+        },
+        {
+          "id": 44,
+          "media_type": "image",
+          "media_url": "https://images.unsplash.com/photo-1550355291-bbee04a92027?auto=format&fit=crop&w=1200&q=85",
+          "thumbnail_url": "https://images.unsplash.com/photo-1550355291-bbee04a92027?auto=format&fit=crop&w=500&q=75",
+          "file_name": "xuv700-side.jpg",
+          "file_size": 260000,
+          "sort_order": 1,
+          "is_primary": false
+        },
+        {
+          "id": 45,
+          "media_type": "image",
+          "media_url": "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=1200&q=85",
+          "thumbnail_url": "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=500&q=75",
+          "file_name": "xuv700-rear.jpg",
+          "file_size": 297000,
+          "sort_order": 2,
+          "is_primary": false
+        }
+      ],
+      "features": [
+        {
+          "id": 76,
+          "feature_name": "Safety",
+          "feature_value": "Level 2 ADAS"
+        },
+        {
+          "id": 77,
+          "feature_name": "Sunroof",
+          "feature_value": "Panoramic Sunroof"
+        },
+        {
+          "id": 78,
+          "feature_name": "Seating",
+          "feature_value": "7 Seater Captain Options"
+        },
+        {
+          "id": 79,
+          "feature_name": "Infotainment",
+          "feature_value": "Dual 10.25 inch Screens"
+        }
+      ]
+    }
+  },
+  {
+    "id": 12,
+    "user_id": 9,
+    "car_id": 21,
+    "created_at": "2026-09-16T16:15:00",
+    "car": {
+      "id": 21,
+      "brand": {
+        "id": 2,
+        "name": "Honda",
+        "slug": "honda",
+        "logo_url": "https://upload.wikimedia.org/wikipedia/commons/7/7b/Honda_Logo.svg"
+      },
+      "model": {
+        "id": 18,
+        "name": "Honda City",
+        "slug": "honda-city",
+        "body_type": "sedan",
+        "seating_capacity": 5
+      },
+      "variant": {
+        "id": 26,
+        "variant_name": "ZX 1.5 Petrol CVT",
+        "fuel_type": "petrol",
+        "transmission": "cvt",
+        "engine_cc": "1498.00",
+        "horsepower": "119.00",
+        "seating_capacity": 5
+      },
+      "manufacturing_year": 2022,
+      "fuel_type": "petrol",
+      "transmission": "cvt",
+      "engine_cc": "1498.00",
+      "horsepower": "119.00",
+      "mileage_km": "21500.00",
+      "color": "Radiant Red",
+      "seating_capacity": 5,
+      "condition": "excellent",
+      "city": "Rajkot",
+      "state": "Gujarat",
+      "country": "India",
+      "postal_code": "360005",
+      "description": "Low-mileage City ZX with sunroof and Honda Sensing. Garage-kept and never modified.",
+      "expected_market_price": "1295000.00",
+      "media": [
+        {
+          "id": 22,
+          "media_type": "image",
+          "media_url": "https://images.unsplash.com/photo-1619767886558-efdc259cde1a?auto=format&fit=crop&w=1200&q=85",
+          "thumbnail_url": "https://images.unsplash.com/photo-1619767886558-efdc259cde1a?auto=format&fit=crop&w=500&q=75",
+          "file_name": "honda-city-front.jpg",
+          "file_size": 213900,
+          "sort_order": 0,
+          "is_primary": true
+        },
+        {
+          "id": 23,
+          "media_type": "image",
+          "media_url": "https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?auto=format&fit=crop&w=1200&q=85",
+          "thumbnail_url": "https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?auto=format&fit=crop&w=500&q=75",
+          "file_name": "honda-city-side.jpg",
+          "file_size": 250900,
+          "sort_order": 1,
+          "is_primary": false
+        },
+        {
+          "id": 24,
+          "media_type": "image",
+          "media_url": "https://images.unsplash.com/photo-1542362567-b07e54358753?auto=format&fit=crop&w=1200&q=85",
+          "thumbnail_url": "https://images.unsplash.com/photo-1542362567-b07e54358753?auto=format&fit=crop&w=500&q=75",
+          "file_name": "honda-city-rear.jpg",
+          "file_size": 287900,
+          "sort_order": 2,
+          "is_primary": false
+        }
+      ],
+      "features": [
+        {
+          "id": 48,
+          "feature_name": "Airbags",
+          "feature_value": "6 Airbags"
+        },
+        {
+          "id": 49,
+          "feature_name": "Sunroof",
+          "feature_value": "Electric Sunroof"
+        },
+        {
+          "id": 50,
+          "feature_name": "Safety",
+          "feature_value": "Honda Sensing (ADAS)"
+        },
+        {
+          "id": 51,
+          "feature_name": "Infotainment",
+          "feature_value": "8 inch Touchscreen"
+        }
+      ]
+    }
+  }
+]

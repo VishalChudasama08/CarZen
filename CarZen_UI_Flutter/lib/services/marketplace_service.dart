@@ -1,0 +1,146 @@
+import 'package:carzen_flutter/models/enums.dart';
+import 'package:carzen_flutter/models/listing_models.dart';
+import 'package:carzen_flutter/models/pagination.dart';
+import 'api_client.dart';
+import 'api_exception.dart';
+
+/// Talks to `/v1/cars/{id}/listing*`, the public `/v1/listings*`, and
+/// `/v1/cars/{id}/favorite` / `/v1/users/me/favorites`.
+class MarketplaceService {
+  MarketplaceService({ApiClient? client}) : _client = client ?? ApiClient();
+  final ApiClient _client;
+
+  // ---- Owner listing management ----
+
+  Future<Listing> createListing(
+    int carId, {
+    required ListingType listingType,
+    required String title,
+    String? description,
+    required num askingPrice,
+    bool negotiable = true,
+  }) async {
+    final json = await _client.post('/cars/$carId/listing', body: {
+      'listing_type': listingType.apiValue,
+      'title': title,
+      if (description != null && description.isNotEmpty) 'description': description,
+      'asking_price': askingPrice,
+      'negotiable': negotiable,
+    });
+    return Listing.fromJson(json as Map<String, dynamic>);
+  }
+
+  Future<Listing> getOwnedListing(int carId) async {
+    final json = await _client.get('/cars/$carId/listing');
+    return Listing.fromJson(json as Map<String, dynamic>);
+  }
+
+  Future<Listing> updateListing(int carId, Map<String, dynamic> partialFields) async {
+    final json = await _client.patch('/cars/$carId/listing', body: partialFields);
+    return Listing.fromJson(json as Map<String, dynamic>);
+  }
+
+  Future<void> deleteListing(int carId) => _client.delete('/cars/$carId/listing');
+
+  Future<Listing> publishListing(int carId) async {
+    final json = await _client.post('/cars/$carId/listing/publish');
+    return Listing.fromJson(json as Map<String, dynamic>);
+  }
+
+  Future<Listing> unpublishListing(int carId) async {
+    final json = await _client.post('/cars/$carId/listing/unpublish');
+    return Listing.fromJson(json as Map<String, dynamic>);
+  }
+
+  // ---- Public browsing (no auth required by the backend) ----
+
+  Future<PaginatedList<Listing>> listPublicListings({
+    int page = 1,
+    int limit = 20,
+    int? brandId,
+    int? modelId,
+    FuelType? fuelType,
+    TransmissionType? transmission,
+    String? city,
+    String? state,
+    num? minPrice,
+    num? maxPrice,
+    String? search,
+    int? minYear,
+    int? maxYear,
+    num? minMileage,
+    num? maxMileage,
+    CarCondition? condition,
+    ListingSort? sortBy,
+  }) async {
+    final json = await _client.get('/listings', query: {
+      'page': page,
+      'limit': limit,
+      'search': search,
+      'min_year': minYear,
+      'max_year': maxYear,
+      'min_mileage': minMileage,
+      'max_mileage': maxMileage,
+      'condition': condition?.apiValue,
+      'sort_by': sortBy?.apiValue,
+      'brand_id': brandId,
+      'model_id': modelId,
+      'fuel_type': fuelType?.apiValue,
+      'transmission': transmission?.apiValue,
+      'city': city,
+      'state': state,
+      'min_price': minPrice,
+      'max_price': maxPrice,
+    });
+    return PaginatedList.fromJson(json as Map<String, dynamic>, Listing.fromJson);
+  }
+
+  /// The favorites payload only carries the car, not its listing, and the
+  /// backend has no public "listing by car" endpoint. Public listings are
+  /// scanned page by page (100 per page) until the car is found. Returns
+  /// `null` when the car is no longer publicly listed.
+  Future<int?> findPublicListingIdForCar(int carId) async {
+    var page = 1;
+    while (true) {
+      final result = await listPublicListings(page: page, limit: 100);
+      for (final listing in result.data) {
+        if (listing.carId == carId) return listing.id;
+      }
+      if (page >= result.pagination.totalPages) return null;
+      page++;
+    }
+  }
+
+  /// The list endpoint omits the car snapshot, so each card needs the detail
+  /// call. Listings that disappear between the two calls (sold, removed) are
+  /// skipped instead of failing the whole page.
+  Future<List<ListingDetail>> expandWithCarDetails(Iterable<Listing> listings) async {
+    final fetched = await Future.wait(listings.map((l) async {
+      try {
+        return await getPublicListing(l.id);
+      } on ApiException {
+        return null;
+      }
+    }));
+    return fetched.whereType<ListingDetail>().toList();
+  }
+
+  Future<ListingDetail> getPublicListing(int listingId) async {
+    final json = await _client.get('/listings/$listingId');
+    return ListingDetail.fromJson(json as Map<String, dynamic>);
+  }
+
+  // ---- Favorites ----
+
+  Future<Favorite> addFavorite(int carId) async {
+    final json = await _client.post('/cars/$carId/favorite');
+    return Favorite.fromJson(json as Map<String, dynamic>);
+  }
+
+  Future<void> removeFavorite(int carId) => _client.delete('/cars/$carId/favorite');
+
+  Future<List<Favorite>> listFavorites() async {
+    final json = await _client.get('/users/me/favorites');
+    return (json as List<dynamic>).map((e) => Favorite.fromJson(e as Map<String, dynamic>)).toList();
+  }
+}
