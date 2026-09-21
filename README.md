@@ -255,39 +255,46 @@ cd CarZen
 
 Navigate to the backend directory:
 
-```bash
+```powershell
 cd backend
 ```
 
 Create a Python virtual environment:
 
-```bash
-python -m venv venv
+```powershell
+python -m venv .venv
 ```
 
-Windows:
+#### Windows PowerShell
 
-```bash
-venv\Scripts\activate
+If activation is blocked by the PowerShell execution policy, run:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 ```
+
+Then activate the environment:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+You should see `(.venv)` at the beginning of the terminal prompt.
 
 Install the required dependencies:
 
-```bash
+```powershell
+python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
-
----
 
 ### 3. Database Setup
 
 Create the MySQL database according to the backend configuration.
 
-The **database SQL file is available inside the `docs/` directory** and can be imported into MySQL to set up the required database structure and data.
+The database SQL file is available inside the `docs/` directory. Import it into MySQL to create the required database structure and data.
 
-Configure the backend environment variables in the `.env` file according to your local MySQL configuration.
-
-Example:
+Configure the `.env` file with your local MySQL configuration:
 
 ```env
 DATABASE_NAME=carzen_db_v1
@@ -295,18 +302,20 @@ DATABASE_USER=root
 DATABASE_PASSWORD=your_password
 ```
 
-> Do not commit real passwords, API keys, payment credentials, or other secrets to GitHub.
-
----
+Do not commit real passwords, API keys, payment credentials, or other secrets to GitHub.
 
 ### 4. Run the Backend
 
-From the project root, the backend can be started according to the project's backend configuration.
+Make sure the virtual environment is activated:
 
-For example:
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
 
-```bash
-python backend/run.py
+From the `backend` directory, run:
+
+```powershell
+python run.py
 ```
 
 The FastAPI server will normally be available at:
@@ -320,8 +329,6 @@ FastAPI Swagger documentation:
 ```text
 http://127.0.0.1:8000/docs
 ```
-
----
 
 ### 5. Run the Flutter Application
 
