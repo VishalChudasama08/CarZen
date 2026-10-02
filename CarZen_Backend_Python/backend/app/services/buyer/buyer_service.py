@@ -21,12 +21,9 @@ from app.services.car.catalog_service import paginate
 from app.services.notifications import notification_service
 
 
-BUYER_ROLES = {UserRoles.USER}
-
-
 def ensure_buyer(user: User) -> None:
-    if user.role not in BUYER_ROLES:
-        raise PermissionError("Buyer or user access required.")
+    if user.role != UserRoles.USER:
+        raise PermissionError("User access required.")
 
 
 def get_listing_and_record_view(db: Session, listing_id: int, buyer: User) -> Listings:

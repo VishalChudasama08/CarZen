@@ -220,4 +220,6 @@ class Cars(Base):
     price_predictions = relationship("PricePredictions", back_populates="car", foreign_keys="PricePredictions.car_id")
     reviews = relationship("Reviews", back_populates="car", foreign_keys="Reviews.car_id")
     reports = relationship("Reports", back_populates="car", foreign_keys="Reports.car_id")
+    service_requests = relationship("ServiceRequests", back_populates="car", foreign_keys="ServiceRequests.car_id")
+
  

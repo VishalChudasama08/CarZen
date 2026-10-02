@@ -17,12 +17,18 @@ class PaymentVerify(BaseModel):
     razorpay_signature: str = Field(min_length=1, max_length=512)
 
 
+class PaymentConfirmCashRequest(BaseModel):
+    notes: str | None = Field(default=None, max_length=500, description="Notes about cash verification")
+
+
 class PaymentResponse(BaseModel):
     id: int
     order_id: int | None = None
+    service_booking_id: int | None = None
     amount: Decimal
     currency: str
     payment_method: PaymentMethod | None = None
+    provider: str | None = None
     razorpay_order_id: str | None = None
     razorpay_payment_id: str | None = None
     status: GatewayPaymentStatus

@@ -8,12 +8,16 @@ class ListingType(str, Enum):
 
 class ListingStatus(str, Enum):
     DRAFT = "draft"
+    PENDING_REVIEW = "pending_review"
+    APPROVED = "approved"
+    REJECTED = "rejected"
     ACTIVE = "active"
     RESERVED = "reserved"
     SOLD = "sold"
     EXPIRED = "expired"
     CANCELLED = "cancelled"
     REMOVED = "removed"
+    SUSPENDED = "suspended"
 
 
 class ListingSort(str, Enum):

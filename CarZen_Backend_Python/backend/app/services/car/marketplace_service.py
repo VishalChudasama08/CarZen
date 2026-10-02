@@ -23,8 +23,10 @@ from app.models.car_models import CarModels
 def create_listing(db: Session, car_id: int, user: User, values: dict) -> Listings:
     _ensure_seller(user)
     car_service.get_owned_car(db, car_id, user)
+    
     if db.query(Listings).filter(Listings.car_id == car_id, Listings.deleted_at.is_(None)).first():
         raise ValueError("An active listing already exists for this car.")
+   
     listing = Listings(car_id=car_id, seller_id=user.id, listing_status=ListingStatus.DRAFT, **values)
     db.add(listing)
     db.commit()
@@ -35,7 +37,8 @@ def create_listing(db: Session, car_id: int, user: User, values: dict) -> Listin
 def get_owned_listing(db: Session, car_id: int, user: User) -> Listings:
     _ensure_seller(user)
     listing = _get_listing_for_car(db, car_id)
-    if listing.seller_id != user.id: raise PermissionError("You do not own this listing.")
+    if listing.seller_id != user.id: 
+        raise PermissionError("You do not own this listing.")
     return listing
 
 
@@ -198,8 +201,6 @@ def list_favorites(db: Session, user: User) -> list[Favorites]:
     return db.query(Favorites).filter(Favorites.user_id == user.id).order_by(Favorites.created_at.desc()).all()
 
 
-
-
 def _get_listing_for_car(db: Session, car_id: int) -> Listings:
     listing = db.query(Listings).filter(Listings.car_id == car_id, Listings.deleted_at.is_(None)).first()
     if not listing: 
@@ -208,5 +209,5 @@ def _get_listing_for_car(db: Session, car_id: int) -> Listings:
 
 
 def _ensure_seller(user: User) -> None:
-    if user.role != UserRoles.SELLER:
-        raise PermissionError("Seller access required to manage listings.")
+    if user.role != UserRoles.USER:
+        raise PermissionError("User access required to manage listings.")

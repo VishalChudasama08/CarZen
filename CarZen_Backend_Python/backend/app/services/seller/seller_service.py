@@ -9,12 +9,9 @@ from app.services.car.catalog_service import paginate
 from app.services.notifications import notification_service
 
 
-# SELLER_ROLES = {UserRoles.SELLER, UserRoles.RESELLER}
-SELLER_ROLES = {UserRoles.SELLER}
-
 def ensure_seller(user: User) -> None:
-    if user.role not in SELLER_ROLES:
-        raise PermissionError("Seller or reseller access required.")
+    if user.role != UserRoles.USER:
+        raise PermissionError("User access required.")
 
 
 def list_seller_inquiries(

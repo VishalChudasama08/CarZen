@@ -13,7 +13,6 @@ from sqlalchemy.orm import relationship
 
 from app.database.connection import Base
 
-
 class ServiceItems(Base):
     __tablename__ = "service_items"
 
@@ -55,5 +54,13 @@ class ServiceItems(Base):
         default=datetime.datetime.utcnow
     )
     
-        # Relationships
+    # Relationships
     service_record = relationship("ServiceRecords", back_populates="items", foreign_keys=[service_record_id])
+
+    @property
+    def unit_price(self):
+        return self.unit_cost
+
+    @property
+    def total_price(self):
+        return self.total_cost

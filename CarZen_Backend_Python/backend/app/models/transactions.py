@@ -36,8 +36,14 @@ class Transactions(Base):
         ForeignKey("listings.id"),
         nullable=False
     )
-
-    car_id = Column(
+    order_id = Column(
+        BigInteger,
+        ForeignKey("orders.id"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+    car_id = Column( 
         BigInteger,
         ForeignKey("cars.id"),
         nullable=False
@@ -102,5 +108,9 @@ class Transactions(Base):
     car = relationship("Cars", back_populates="transactions", foreign_keys=[car_id])
     buyer = relationship("User", back_populates="transactions_bought", foreign_keys=[buyer_id])
     seller = relationship("User", back_populates="transactions_sold", foreign_keys=[seller_id])
- 
+    order = relationship("Orders",back_populates="transaction",foreign_keys=[order_id])
+    
     payments = relationship("Payments", back_populates="transaction", foreign_keys="Payments.transaction_id")
+    reviews = relationship("Reviews", back_populates="transaction", foreign_keys="Reviews.transaction_id")
+
+   

@@ -18,8 +18,11 @@ from app.models.prediction_features import PredictionFeatures
 from app.models.price_predictions import PricePredictions
 from app.models.reports import Reports
 from app.models.reviews import Reviews
-from app.models.service_centers import ServiceCenters
 from app.models.service_items import ServiceItems
 from app.models.service_records import ServiceRecords
 from app.models.transactions import Transactions
 from app.models.users import User
+from app.models.services import Services
+from app.models.service_requests import ServiceRequests
+from app.models.service_request_items import ServiceRequestItems
+

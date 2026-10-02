@@ -58,8 +58,8 @@ def list_cars(db: Session, page: int, limit: int, owner_id: int | None = None, *
 
 
 def ensure_seller_access(user: User) -> None:
-    if user.role != UserRoles.SELLER:
-        raise PermissionError("Seller access required to manage cars.")
+    if user.role != UserRoles.USER:
+        raise PermissionError("User access required to manage cars.")
 
 
 def get_car(db: Session, car_id: int) -> Cars:

@@ -43,6 +43,13 @@ class Reviews(Base):
         nullable=True
     )
 
+    transaction_id = Column(
+        BigInteger,
+        ForeignKey("transactions.id"),
+        nullable=True,
+        index=True
+    )
+
     rating = Column(
         Integer,
         nullable=False
@@ -84,4 +91,6 @@ class Reviews(Base):
     user = relationship("User", back_populates="reviews", foreign_keys=[user_id])
     car = relationship("Cars", back_populates="reviews", foreign_keys=[car_id])
     listing = relationship("Listings", back_populates="reviews", foreign_keys=[listing_id])
+    transaction = relationship("Transactions", back_populates="reviews", foreign_keys=[transaction_id])
+
  

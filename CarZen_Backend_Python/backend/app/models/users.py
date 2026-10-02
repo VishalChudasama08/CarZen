@@ -15,8 +15,8 @@ class User(Base):
     username = Column(String(100), unique=True, nullable=False, index=True) 
     email = Column(String(255), unique=True, nullable=False, index=True) 
     password = Column(String(255), nullable=False) 
-    phone_number = Column(String(20), unique=True, nullable=True) 
-    role = Column(Enum(UserRoles), nullable=False, default=UserRoles.USER) 
+    phone_number = Column(String(20), unique=True, nullable=True)
+    role = Column(Enum(UserRoles), nullable=False, default=UserRoles.USER, index=True)
     status = Column(Enum(UserStatus), nullable=False, default=UserStatus.ACTIVE) 
     profile_image_url = Column(String(500), nullable=True) 
  
@@ -30,8 +30,6 @@ class User(Base):
     cars_owned = relationship("Cars", back_populates="owner", foreign_keys="Cars.owner_id")
     listings = relationship("Listings", back_populates="seller", foreign_keys="Listings.seller_id")
     contact = relationship( "Contact",back_populates="user",foreign_keys="Contact.user_id",uselist=False)
-        
-    service_centers = relationship("ServiceCenters", back_populates="owner", foreign_keys="ServiceCenters.owner_id")
     favorites = relationship("Favorites", back_populates="user", foreign_keys="Favorites.user_id")
     notifications = relationship("Notifications", back_populates="user", foreign_keys="Notifications.user_id")
     reports = relationship("Reports", back_populates="reporter", foreign_keys="Reports.reporter_id")
@@ -49,3 +47,5 @@ class User(Base):
 
     price_predictions = relationship("PricePredictions", back_populates="user", foreign_keys="PricePredictions.user_id")
     reviews = relationship("Reviews", back_populates="user", foreign_keys="Reviews.user_id")
+    service_requests = relationship("ServiceRequests", back_populates="user", foreign_keys="ServiceRequests.user_id")
+

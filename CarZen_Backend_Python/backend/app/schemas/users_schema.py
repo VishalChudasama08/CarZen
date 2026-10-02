@@ -13,8 +13,6 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
     phone_number: str | None = None
-    role: UserRoles = UserRoles.USER
-    status: UserStatus = UserStatus.ACTIVE
     profile_image_url: str | None = None
 
 
@@ -25,8 +23,6 @@ class UserRegister(BaseModel):
     email: EmailStr
     password: str
     phone_number: str | None = None
-    role: UserRoles = UserRoles.USER
-    status: UserStatus = UserStatus.ACTIVE 
     profile_image_url: str | None = None
 
 

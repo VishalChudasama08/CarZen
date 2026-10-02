@@ -7,7 +7,6 @@ from app.database.connection import Base
 from app.models.enums.OrderEnums import OrderStatus
 from app.models.enums.TransactionEnums import PaymentStatus
 
-
 class Orders(Base):
     __tablename__ = "orders"
 
@@ -34,3 +33,4 @@ class Orders(Base):
     buyer = relationship("User", back_populates="orders_bought", foreign_keys=[buyer_id])
     seller = relationship("User", back_populates="orders_sold", foreign_keys=[seller_id])
     payments = relationship("Payments", back_populates="order", foreign_keys="Payments.order_id")
+    transaction = relationship("Transactions",back_populates="order",uselist=False,foreign_keys="Transactions.order_id")

@@ -16,7 +16,6 @@ from sqlalchemy.orm import relationship
 from app.database.connection import Base
 from app.models.enums.ServiceEnums import ServiceStatus
 
-
 class ServiceRecords(Base):
     __tablename__ = "service_records"
 
@@ -35,7 +34,6 @@ class ServiceRecords(Base):
 
     service_center_id = Column(
         BigInteger,
-        ForeignKey("service_centers.id"),
         nullable=True
     )
 
@@ -85,8 +83,11 @@ class ServiceRecords(Base):
     )
 
     status = Column(
-        Enum(ServiceStatus),
-        default=ServiceStatus.COMPLETED
+        Enum(
+            ServiceStatus,
+            values_callable=lambda enum_type: [member.value for member in enum_type],
+        ),
+        default=ServiceStatus.COMPLETED,
     )
 
     created_at = Column(
@@ -102,7 +103,8 @@ class ServiceRecords(Base):
     
     # Relationships
     car = relationship("Cars", back_populates="service_records", foreign_keys=[car_id])
-    service_center = relationship("ServiceCenters", back_populates="service_records", foreign_keys=[service_center_id])
     items = relationship("ServiceItems", back_populates="service_record", foreign_keys="ServiceItems.service_record_id")
+    service_request = relationship("ServiceRequests", back_populates="service_record", uselist=False, foreign_keys="ServiceRequests.service_record_id")
+
  
     

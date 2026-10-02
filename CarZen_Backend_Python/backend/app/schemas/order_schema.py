@@ -10,7 +10,6 @@ from app.schemas.marketplace_schema import ListingCarResponse, ListingResponse
 
 
 class OrderCreate(BaseModel):
-    amount: Decimal = Field(gt=0)
     notes: str | None = Field(default=None, max_length=5000)
 
 

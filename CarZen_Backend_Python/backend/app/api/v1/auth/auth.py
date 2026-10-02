@@ -47,8 +47,7 @@ def register(user:UserRegister,db:Session= Depends(get_db)):
     except Exception:
         # Final safety net to avoid leaking internals
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error") 
-    
-    
+
 @router.post("/login",response_model=Token)
 def login(user:UserLogin,db:Session = Depends(get_db)):
     try:

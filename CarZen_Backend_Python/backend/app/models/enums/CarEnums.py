@@ -59,4 +59,3 @@ class CarApprovalStatus(str, Enum):
 class MediaType(str, Enum):
     IMAGE = "image"
     VIDEO = "video"
-    DOCUMENT = "document"

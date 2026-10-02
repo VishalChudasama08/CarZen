@@ -50,6 +50,13 @@ class Payments(Base):
         index=True,
     )
 
+    service_request_id = Column(
+        BigInteger,
+        ForeignKey("service_requests.id"),
+        nullable=True,
+        index=True,
+    )
+
     amount = Column(
         Numeric(15, 2),
         nullable=False
@@ -115,3 +122,4 @@ class Payments(Base):
     transaction = relationship("Transactions", back_populates="payments", foreign_keys=[transaction_id])
     order = relationship("Orders", back_populates="payments", foreign_keys=[order_id])
     user = relationship("User", back_populates="payments", foreign_keys=[user_id])
+    service_request = relationship("ServiceRequests", back_populates="payments", foreign_keys=[service_request_id])

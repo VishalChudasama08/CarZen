@@ -17,9 +17,6 @@ from app.services.car.catalog_service import paginate
 from app.services.notifications import notification_service
 
 
-BUYER_ROLES = {UserRoles.USER}
-# SELLER_ROLES = {UserRoles.SELLER, UserRoles.RESELLER}
-SELLER_ROLES = {UserRoles.SELLER}
 ACTIVE_ORDER_STATUSES = {OrderStatus.PENDING, OrderStatus.CONFIRMED, OrderStatus.PROCESSING}
 
 
@@ -42,7 +39,10 @@ def create_order(db: Session, listing_id: int, buyer: User, values: dict) -> Ord
         car_id=listing.car_id,
         buyer_id=buyer.id,
         seller_id=listing.seller_id,
-        **values,
+        amount=listing.asking_price,
+        notes=values.get("notes"),
+        status=OrderStatus.PENDING,
+        payment_status=PaymentStatus.PENDING,
     )
     
     db.add(order)
@@ -116,21 +116,56 @@ def list_seller_orders(db: Session, seller: User, page: int, limit: int, order_s
 
 def accept_order(db: Session, order_id: int, seller: User) -> Orders:
     order = _get_seller_order(db, order_id, seller)
+    
+    listing = (
+        db.query(Listings)
+        .filter(Listings.id == order.listing_id)
+        .with_for_update()
+        .first()
+    )
+    
+    if listing is None:
+        raise LookupError("Listing not found.")
+
+    if listing.listing_status != ListingStatus.ACTIVE:
+        raise ValueError(
+            "This listing is no longer available."
+        )
+        
     if order.status != OrderStatus.PENDING:
         raise ValueError("Only pending orders can be accepted.")
-    if db.query(Orders).filter(
-        Orders.listing_id == order.listing_id,
-        Orders.id != order.id,
-        Orders.status.in_([OrderStatus.CONFIRMED, OrderStatus.PROCESSING]),
-    ).first():
-        raise ValueError("This listing already has a confirmed order.")
+    
+    existing_confirmed = (
+        db.query(Orders)
+        .filter(
+            Orders.listing_id == order.listing_id,
+            Orders.id != order.id,
+            Orders.status.in_(
+                [
+                    OrderStatus.CONFIRMED,
+                    OrderStatus.PROCESSING,
+                ]
+            ),
+        )
+        .first()
+    )
+    
+    if existing_confirmed:
+        raise ValueError(
+            "This listing already has a confirmed order."
+        )
+
     _change_status(db, order, OrderStatus.CONFIRMED)
-    order.listing.listing_status = ListingStatus.RESERVED
+    
+    listing.listing_status = ListingStatus.RESERVED
+    
     notification_service.create_notification(
         db, order.buyer_id, NotificationType.ORDER, "Order confirmed",
         f"The seller confirmed your order for {order.listing.title}.", order.id, "order",
     )
+    
     db.commit()
+    
     return get_order_for_user(db, order.id, seller)
 
 
@@ -148,17 +183,55 @@ def reject_order(db: Session, order_id: int, seller: User) -> Orders:
 def update_seller_order_status(db: Session, order_id: int, seller: User, target: OrderStatus) -> Orders:
     order = _get_seller_order(db, order_id, seller)
     
-    if target not in {OrderStatus.PROCESSING, OrderStatus.COMPLETED}:
-        raise ValueError("Sellers can update orders only to processing or completed.")
-    
-    _change_status(db, order, target)
-    
-    notification_service.create_notification(
-        db, order.buyer_id, NotificationType.ORDER, f"Order {target.value}",
-        f"Your order for {order.listing.title} is now {target.value}.", order.id, "order",
-    )
-    db.commit()
-    return get_order_for_user(db, order.id, seller)
+    if order.status == target:
+        return get_order_for_user(db, order.id, seller)
+
+    if target == OrderStatus.CONFIRMED:
+        return accept_order(db, order_id, seller)
+
+    if target == OrderStatus.REJECTED:
+        return reject_order(db, order_id, seller)
+
+    if target == OrderStatus.CANCELLED:
+        if order.status not in {OrderStatus.PENDING, OrderStatus.CONFIRMED}:
+            raise ValueError(f"Cannot cancel an order that is already {order.status.value}.")
+        _change_status(db, order, OrderStatus.CANCELLED)
+        notification_service.create_notification(
+            db,
+            order.buyer_id,
+            NotificationType.ORDER,
+            "Order cancelled by seller",
+            f"The seller cancelled the order for {order.listing.title}.",
+            order.id,
+            "order",
+        )
+        db.commit()
+        
+        return get_order_for_user(db, order.id, seller)
+
+    if target == OrderStatus.PROCESSING:
+        if order.status == OrderStatus.PENDING:
+            order = accept_order(db, order_id, seller)
+        _change_status(db, order, OrderStatus.PROCESSING)
+        notification_service.create_notification(
+            db, order.buyer_id, NotificationType.ORDER, "Order processing",
+            f"Your order for {order.listing.title} is now processing.", order.id, "order",
+        )
+        db.commit()
+        return get_order_for_user(db, order.id, seller)
+
+    if target == OrderStatus.COMPLETED:
+        if order.status == OrderStatus.CONFIRMED:
+            _change_status(db, order, OrderStatus.PROCESSING)
+        _change_status(db, order, OrderStatus.COMPLETED)
+        notification_service.create_notification(
+            db, order.buyer_id, NotificationType.ORDER, "Order completed",
+            f"Your order for {order.listing.title} is now completed.", order.id, "order",
+        )
+        db.commit()
+        return get_order_for_user(db, order.id, seller)
+
+    raise ValueError(f"Sellers cannot set order status to '{target.value}'.")
 
 
 def list_admin_orders(db: Session, page: int, limit: int, order_status: OrderStatus | None = None):
@@ -187,13 +260,22 @@ def update_admin_order_status(db: Session, order_id: int, admin: User, target: O
 
 
 def _get_active_listing(db: Session, listing_id: int) -> Listings:
+    
     listing = _listing_query(db).filter(
         Listings.id == listing_id,
         Listings.deleted_at.is_(None),
         Listings.listing_status == ListingStatus.ACTIVE,
-    ).first()
-    if not listing:
+    ).with_for_update().first()
+    
+    if listing is None:
         raise LookupError("Active listing not found.")
+
+    if listing.car is None:
+        raise ValueError("Listing is not associated with a car.")
+    
+    if listing.car_id != listing.car.id:
+        raise ValueError("Listing and car data are inconsistent.")
+    
     return listing
 
 
@@ -246,13 +328,13 @@ def _cancel_order(db: Session, order: Orders) -> None:
 
 
 def _ensure_buyer(user: User) -> None:
-    if user.role not in BUYER_ROLES:
-        raise PermissionError("Buyer or user access required.")
+    if user.role != UserRoles.USER:
+        raise PermissionError("User access required.")
 
 
 def _ensure_seller(user: User) -> None:
-    if user.role not in SELLER_ROLES:
-        raise PermissionError("Seller or reseller access required.")
+    if user.role != UserRoles.USER:
+        raise PermissionError("User access required.")
 
 
 def _listing_query(db: Session):

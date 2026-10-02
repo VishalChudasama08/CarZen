@@ -6,14 +6,12 @@ from sqlalchemy.orm import Session
 from app.core.auth_dependencies import get_current_admin, get_current_seller
 from app.database.connection.conn import get_db
 from app.models.enums.CarEnums import CarApprovalStatus, FuelType, MediaType, TransmissionType
-from app.models.enums.UserRoles import UserRoles
 from app.models.users import User
 from app.schemas.cars_schema import CarCreate, CarDetailResponse, CarFeatureCreate, CarFeatureResponse, CarFeatureUpdate, CarMediaReorderRequest, CarMediaResponse, CarMediaUpdate, CarRejectionRequest, CarResponse, CarUpdate, PaginatedResponse
 from app.schemas.users_schema import MessageResponse
 from app.services.car import car_service, feature_service, media_service
 
 router = APIRouter()
-
 
 def _raise(exc: Exception):
     if isinstance(exc, LookupError) and "not among the defined enum values" not in str(exc): code = status.HTTP_404_NOT_FOUND

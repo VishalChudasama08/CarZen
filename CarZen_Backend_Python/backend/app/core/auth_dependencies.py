@@ -9,7 +9,6 @@ from app.models.enums.UserRoles import UserRoles
 from app.models.enums.UserStatus import UserStatus
 from app.models.users import User
 
-
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/v1/auth/login")
 
 def get_current_user(
@@ -61,25 +60,19 @@ def get_current_admin(
 
     return current_user
 
-def get_current_seller(
+def get_current_platform_user(
     current_user: User = Depends(get_current_user),
 ) -> User:
-    if current_user.role not in {UserRoles.SELLER}:
+    if current_user.role != UserRoles.USER:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Seller or reseller access required.",
+            detail="User access required.",
         )
 
     return current_user
 
 
-def get_current_service_provider(
-    current_user: User = Depends(get_current_user),
+def get_current_seller(
+    current_user: User = Depends(get_current_platform_user),
 ) -> User:
-    if current_user.role != UserRoles.SERVICE_PROVIDER:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Service Provider access required.",
-        )
-
     return current_user

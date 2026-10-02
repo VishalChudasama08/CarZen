@@ -18,12 +18,6 @@ from app.schemas.users_schema import (
 
 
 def register_user(db:Session,user:UserRegister):
-    if user.role == UserRoles.ADMIN:
-        raise ValueError("Admin accounts cannot be self-registered.")
-
-    if user.status != UserStatus.ACTIVE:
-        raise ValueError("Account status is assigned automatically during registration.")
-
     # Check for existing email
     existing_email = (
         db.query(User)
@@ -53,7 +47,7 @@ def register_user(db:Session,user:UserRegister):
         email=user.email,
         password=hashed_password,
         phone_number=user.phone_number,
-        role=user.role,
+        role=UserRoles.USER,
         status=UserStatus.ACTIVE,
         profile_image_url = user.profile_image_url
     )
@@ -71,9 +65,6 @@ def register_user(db:Session,user:UserRegister):
 
 # admin register
 def register_admin(db:Session,user:UserRegister):
-    if user.status != UserStatus.ACTIVE:
-        raise ValueError("Account status is assigned automatically during registration.")
-
     # Check for existing email
     existing_email = (
         db.query(User)
