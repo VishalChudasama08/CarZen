@@ -351,7 +351,7 @@ flutter run
 For Flutter Web:
 
 ```bash
-flutter run -d chrome
+flutter run -d chrome --web-port=3000
 ```
 
 ---
