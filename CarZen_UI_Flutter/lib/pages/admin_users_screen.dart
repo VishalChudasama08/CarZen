@@ -6,6 +6,7 @@ import 'package:carzen_flutter/theme/app_theme.dart';
 import 'package:carzen_flutter/widgets/admin_user_dialogs.dart';
 import 'package:carzen_flutter/widgets/carzen_nav_bar.dart';
 import 'package:carzen_flutter/widgets/content_width.dart';
+import 'package:carzen_flutter/widgets/page_container.dart';
 import 'package:carzen_flutter/widgets/state_views.dart';
 import 'package:carzen_flutter/widgets/user_badges.dart';
 import 'package:flutter/material.dart';
@@ -51,9 +52,9 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     super.dispose();
   }
 
-  void _snack(String message) {
+  void _snack(String message, {bool error = false}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    showAppSnack(context, message, error: error);
   }
 
   Future<void> _load({bool silent = false}) async {
@@ -90,7 +91,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
   void _onLoadError(ApiException error, bool silent) {
     if (!mounted) return;
     if (silent) {
-      _snack(error.message);
+      _snack(error.message, error: true);
       return;
     }
     setState(() {
@@ -128,7 +129,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
       setState(() => _users = [for (final u in _users) u.id == updated.id ? updated : u]);
       _snack('Updated @${updated.username}.');
     } on ApiException catch (e) {
-      _snack(e.message);
+      _snack(e.message, error: true);
     } finally {
       if (mounted) setState(() => _busyId = null);
     }
@@ -143,7 +144,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
       setState(() => _users = _users.where((u) => u.id != user.id).toList());
       _snack('@${user.username} was deleted.');
     } on ApiException catch (e) {
-      _snack(e.message);
+      _snack(e.message, error: true);
     } finally {
       if (mounted) setState(() => _busyId = null);
     }
@@ -152,8 +153,8 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: const CarZenNavBar(current: NavSection.adminUsers, title: 'Users'),
+      bottomNavigationBar: const CarZenBottomBar(current: NavSection.adminUsers),
       body: SafeArea(child: ContentWidth(maxWidth: 1100, child: _buildBody())),
     );
   }
@@ -178,8 +179,17 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            sliver: SliverToBoxAdapter(child: _Header(users: _users)),
+            padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+            sliver: SliverToBoxAdapter(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const PageHeader(title: 'Users', subtitle: 'Manage accounts, roles and access.', icon: Icons.group_rounded),
+                  const SizedBox(height: 16),
+                  _Header(users: _users),
+                ],
+              ),
+            ),
           ),
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
@@ -243,9 +253,13 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
               label: Text(text),
               selected: selected == value,
               onSelected: (_) => onSelected(value),
-              selectedColor: AppColors.secondary.withValues(alpha: 0.25),
-              checkmarkColor: AppColors.primary,
-              side: const BorderSide(color: AppColors.divider),
+              showCheckmark: false,
+              selectedColor: AppColors.cyanTint,
+              labelStyle: TextStyle(
+                fontWeight: FontWeight.w700,
+                color: selected == value ? AppColors.secondary : AppColors.textPrimary,
+              ),
+              side: BorderSide(color: selected == value ? AppColors.secondary : AppColors.divider),
             ),
         ],
       );
@@ -321,8 +335,9 @@ class _Header extends StatelessWidget {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: AppColors.surface,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(AppRadii.md),
               border: Border.all(color: AppColors.divider),
+              boxShadow: AppShadows.card,
             ),
             child: Row(
               children: [
@@ -367,7 +382,7 @@ class _UserCard extends StatelessWidget {
     final avatar = CircleAvatar(
       radius: 22,
       backgroundColor: AppColors.primary,
-      child: Text(user.initials, style: const TextStyle(color: AppColors.secondary, fontWeight: FontWeight.w700)),
+      child: Text(user.initials, style: const TextStyle(color: AppColors.cyan, fontWeight: FontWeight.w800)),
     );
     final info = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -411,8 +426,9 @@ class _UserCard extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppRadii.lg),
         border: Border.all(color: AppColors.divider),
+        boxShadow: AppShadows.card,
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {

@@ -83,7 +83,7 @@ class _InquiryThreadScreenState extends State<InquiryThreadScreen> {
       _controller.clear();
       await _load(silent: true);
     } on ApiException catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      if (mounted) showAppSnack(context, e.message, error: true);
     } finally {
       if (mounted) setState(() => _sending = false);
     }

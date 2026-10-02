@@ -1,9 +1,11 @@
 import 'package:carzen_flutter/theme/app_theme.dart';
+import 'package:carzen_flutter/widgets/state_views.dart';
 import 'package:carzen_flutter/widgets/carzen_nav_bar.dart';
 import 'package:flutter/material.dart';
 
 import 'package:carzen_flutter/widgets/auth_error_banner.dart';
 import 'package:carzen_flutter/widgets/auth_header.dart';
+import 'package:carzen_flutter/widgets/auth_layout.dart';
 import 'package:carzen_flutter/widgets/auth_text_field.dart';
 import 'package:carzen_flutter/widgets/primary_button.dart';
 import 'package:carzen_flutter/services/auth_exception.dart';
@@ -64,9 +66,7 @@ class _RegisterPageState extends State<RegisterPage> {
       );
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Account created! Please log in.')),
-      );
+      showAppSnack(context, 'Account created! Please log in.');
       Navigator.pushReplacementNamed(context, '/Login');
     } on AuthException catch (e) {
       setState(() => _errorMessage = e.message);
@@ -96,17 +96,15 @@ class _RegisterPageState extends State<RegisterPage> {
       //   ),
       // ),
 
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
-          child: Form(
+      body: AuthLayout(
+        child: Form(
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const AuthHeader(
                     title: "Create Account",
-                    subTitle: "Join CarZen to buy, sell and resell\ncars with confidence."
+                    subTitle: "Join CarZen to buy, sell and service\ncars with confidence."
                 ),
                 if (_errorMessage != null) AuthErrorBanner(message: _errorMessage!),
                 AuthTextField(
@@ -184,7 +182,6 @@ class _RegisterPageState extends State<RegisterPage> {
               ],
             ),
           ),
-        ),
       ),
     );
   }

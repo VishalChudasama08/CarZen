@@ -38,7 +38,7 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen> {
 
   void _snack(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    showAppSnack(context, message);
   }
 
   Future<void> _load() async {

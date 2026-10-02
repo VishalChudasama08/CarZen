@@ -235,10 +235,13 @@ class _AddEditCarScreenState extends State<AddEditCarScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                _StepIntro(editing: _isEditing),
                 if (_errorMessage != null) AuthErrorBanner(message: _errorMessage!),
                 if (!_isEditing) ...[
-                  Text('Brand, Model & Variant', style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 10),
+                  Text('Brand, model & variant', style: Theme.of(context).textTheme.titleLarge),
+                  const SizedBox(height: 4),
+                  Text('Pick your car from the catalogue so buyers see the right specifications.', style: Theme.of(context).textTheme.bodySmall),
+                  const SizedBox(height: 12),
                   _loadingBrands
                       ? const Padding(
                           padding: EdgeInsets.symmetric(vertical: 12),
@@ -287,8 +290,10 @@ class _AddEditCarScreenState extends State<AddEditCarScreen> {
                         ),
                   const SizedBox(height: 20),
                 ],
-                Text('Car Details', style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 10),
+                Text('Car details', style: Theme.of(context).textTheme.titleLarge),
+                const SizedBox(height: 4),
+                Text('Be accurate — the CarZen team checks these details before your car is approved.', style: Theme.of(context).textTheme.bodySmall),
+                const SizedBox(height: 12),
                 AuthTextField(
                   controller: _yearController,
                   label: 'Manufacturing Year *',
@@ -488,6 +493,41 @@ class _EnumDropdown<T> extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Short explanation at the top of the car form: where this step sits in the sell flow.
+class _StepIntro extends StatelessWidget {
+  final bool editing;
+  const _StepIntro({required this.editing});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.cyanTint,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        border: Border.all(color: AppColors.cyan.withValues(alpha: 0.5)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.info_outline_rounded, color: AppColors.secondary, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              editing
+                  ? 'Changing key details such as year, mileage or price sends an approved car back for review.'
+                  : 'Step 1 of 4: add your car. After saving you can add photos and features, then publish a listing once the car is approved.',
+              style: const TextStyle(height: 1.4, fontSize: 13.5),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

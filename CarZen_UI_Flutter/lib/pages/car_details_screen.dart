@@ -15,6 +15,9 @@ import 'package:carzen_flutter/utils/breakpoints.dart';
 import 'package:carzen_flutter/utils/formatters.dart';
 import 'package:carzen_flutter/widgets/carzen_nav_bar.dart';
 import 'package:carzen_flutter/widgets/listing_dialogs.dart';
+import 'package:carzen_flutter/widgets/network_photo.dart';
+import 'package:carzen_flutter/widgets/page_container.dart';
+import 'package:carzen_flutter/widgets/surface_card.dart';
 import 'package:carzen_flutter/widgets/state_views.dart';
 import 'package:flutter/material.dart';
 
@@ -53,9 +56,9 @@ class _CarDetailsScreenState extends State<CarDetailsScreen> {
     });
   }
 
-  void _snack(String message) {
+  void _snack(String message, {bool error = false}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    showAppSnack(context, message, error: error);
   }
 
   /// Marks the heart correctly for signed-in users. Silent for visitors and on
@@ -86,7 +89,7 @@ class _CarDetailsScreenState extends State<CarDetailsScreen> {
       if (!mounted) return;
       setState(() => _isFavorite = wantFavorite);
     } on ApiException catch (e) {
-      _snack(e.message);
+      _snack(e.message, error: true);
     } finally {
       if (mounted) setState(() => _favoriteBusy = false);
     }
@@ -102,7 +105,7 @@ class _CarDetailsScreenState extends State<CarDetailsScreen> {
       _snack('Purchase request sent to the seller.');
       Navigator.of(context).pushNamed(AppRoutes.orders);
     } on ApiException catch (e) {
-      _snack(e.message);
+      _snack(e.message, error: true);
     }
   }
 
@@ -120,7 +123,7 @@ class _CarDetailsScreenState extends State<CarDetailsScreen> {
       _snack('Your message was sent to the seller.');
       Navigator.of(context).pushNamed(AppRoutes.inquiry(inquiry.id));
     } on ApiException catch (e) {
-      _snack(e.message);
+      _snack(e.message, error: true);
     }
   }
 
@@ -136,7 +139,7 @@ class _CarDetailsScreenState extends State<CarDetailsScreen> {
       );
       _snack('Thanks - your report was sent to our team.');
     } on ApiException catch (e) {
-      _snack(e.message);
+      _snack(e.message, error: true);
     }
   }
 
@@ -150,7 +153,7 @@ class _CarDetailsScreenState extends State<CarDetailsScreen> {
           future: _future,
           builder: (context, snapshot) {
             if (snapshot.connectionState != ConnectionState.done) {
-              return const LoadingView(label: 'Loading car details...');
+              return const _DetailsSkeleton();
             }
             if (snapshot.hasError) {
               final error = snapshot.error;
@@ -165,8 +168,7 @@ class _CarDetailsScreenState extends State<CarDetailsScreen> {
                   ),
                 );
               }
-              final message = error is ApiException ? error.message : 'Could not load this listing.';
-              return ErrorStateView(message: message, onRetry: () => setState(_load));
+              return ApiErrorView(error: error!, onRetry: () => setState(_load), fallback: 'Could not load this listing.');
             }
             return _buildBody(context, snapshot.data!);
           },
@@ -187,74 +189,106 @@ class _CarDetailsScreenState extends State<CarDetailsScreen> {
       onReport: () => _report(listing),
     );
     final details = <Widget>[
-      _SectionTitle('Specifications'),
+      const _SectionTitle('Specifications'),
       _SpecsSection(car: car),
       if (car.features.isNotEmpty) ...[
-        const SizedBox(height: 24),
-        _SectionTitle('Features'),
+        const SizedBox(height: 28),
+        const _SectionTitle('Features'),
         Wrap(
           spacing: 8,
           runSpacing: 8,
           children: [
             for (final f in car.features)
-              Chip(
-                label: Text(f.featureValue == null ? f.featureName : '${f.featureName}: ${f.featureValue}'),
-                backgroundColor: AppColors.surface,
-                side: const BorderSide(color: AppColors.divider),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.cyanTint,
+                  borderRadius: BorderRadius.circular(AppRadii.pill),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.check_rounded, size: 15, color: AppColors.secondary),
+                    const SizedBox(width: 6),
+                    Text(
+                      f.featureValue == null ? f.featureName : '${f.featureName}: ${f.featureValue}',
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                    ),
+                  ],
+                ),
               ),
           ],
         ),
       ],
       if (listing.description != null && listing.description!.isNotEmpty) ...[
-        const SizedBox(height: 24),
-        _SectionTitle('Description'),
-        Text(listing.description!, style: const TextStyle(color: AppColors.textSecondary, height: 1.55)),
+        const SizedBox(height: 28),
+        const _SectionTitle('About this car'),
+        Text(listing.description!, style: const TextStyle(color: AppColors.textSecondary, height: 1.6, fontSize: 15)),
       ],
+      const SizedBox(height: 28),
+      _SellerCard(listing: listing),
     ];
 
     if (Breakpoints.isExpanded(context)) {
       return SingleChildScrollView(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: Breakpoints.maxContentWidth),
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [_Gallery(media: car.media), const SizedBox(height: 28), ...details],
-                    ),
-                  ),
-                  const SizedBox(width: 28),
-                  SizedBox(width: 380, child: summary),
-                ],
+        child: PageContainer(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [_Gallery(media: car.media), const SizedBox(height: 32), ...details],
+                ),
               ),
-            ),
+              const SizedBox(width: 28),
+              SizedBox(width: 390, child: summary),
+            ],
           ),
         ),
       );
     }
 
     return SingleChildScrollView(
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 760),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _Gallery(media: car.media),
-                const SizedBox(height: 16),
-                summary,
-                const SizedBox(height: 24),
-                ...details,
-              ],
-            ),
-          ),
+      child: PageContainer(
+        maxWidth: 760,
+        verticalPadding: AppSpacing.lg,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _Gallery(media: car.media),
+            const SizedBox(height: 16),
+            summary,
+            const SizedBox(height: 28),
+            ...details,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Placeholder shown while the listing loads: same shape as the finished page.
+class _DetailsSkeleton extends StatelessWidget {
+  const _DetailsSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      physics: const NeverScrollableScrollPhysics(),
+      child: PageContainer(
+        maxWidth: 900,
+        child: const Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AspectRatio(aspectRatio: 16 / 10, child: SkeletonBox(radius: AppRadii.lg)),
+            SizedBox(height: 18),
+            SkeletonBox(height: 30, radius: 8),
+            SizedBox(height: 10),
+            SkeletonBox(height: 18, radius: 8),
+            SizedBox(height: 18),
+            SkeletonBox(height: 52, radius: AppRadii.md),
+          ],
         ),
       ),
     );
@@ -267,9 +301,59 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: Text(text, style: Theme.of(context).textTheme.titleMedium),
+        padding: const EdgeInsets.only(bottom: 14),
+        child: Text(text, style: Theme.of(context).textTheme.titleLarge),
       );
+}
+
+/// What the backend actually tells us about the seller: their member id is
+/// private (only an admin or the user themself may look a user up), so the
+/// card shows the listing facts and points to in-app messaging.
+class _SellerCard extends StatelessWidget {
+  final ListingDetail listing;
+  const _SellerCard({required this.listing});
+
+  @override
+  Widget build(BuildContext context) {
+    final car = listing.car;
+    return SurfaceCard(
+      padding: const EdgeInsets.all(18),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: const BoxDecoration(color: AppColors.cyanTint, shape: BoxShape.circle),
+            child: const Icon(Icons.person_rounded, color: AppColors.secondary),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Listed by a CarZen member', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15.5)),
+                const SizedBox(height: 4),
+                Text(
+                  [
+                    listing.listingType.label,
+                    if (car.ownershipType != null) car.ownershipType!.label else if (car.ownerCount != null) '${car.ownerCount} owner(s)',
+                    '${car.city}, ${car.state}',
+                  ].join(' · '),
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  "Sellers' contact details stay private. Use “Ask the seller” to start a conversation, or send a purchase request.",
+                  style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.45),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 /// Title, price and every action a visitor can take on the listing.
@@ -302,11 +386,12 @@ class _SummaryCard extends StatelessWidget {
     final car = listing.car;
     final marketPrice = car.expectedMarketPrice;
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AppRadii.lg),
         border: Border.all(color: AppColors.divider),
+        boxShadow: AppShadows.card,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -330,7 +415,7 @@ class _SummaryCard extends StatelessWidget {
           const SizedBox(height: 16),
           Text(
             formatInr(listing.askingPrice),
-            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 30, color: AppColors.primary),
+            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 32, color: AppColors.primary, letterSpacing: -0.8),
           ),
           const SizedBox(height: 8),
           Wrap(
@@ -351,7 +436,7 @@ class _SummaryCard extends StatelessWidget {
               style: TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.4),
             )
           else ...[
-          FilledButton.icon(
+          ElevatedButton.icon(
             onPressed: onOrder,
             icon: const Icon(Icons.shopping_cart_checkout_outlined),
             label: const Text('Send purchase request'),
@@ -373,7 +458,7 @@ class _SummaryCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           const Text(
-            'Sending a request does not take a payment.',
+            'Sending a request is free — no payment is taken here.',
             textAlign: TextAlign.center,
             style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
           ),
@@ -397,13 +482,12 @@ class _Pill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: AppColors.background,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.divider),
+          color: AppColors.surfaceMuted,
+          borderRadius: BorderRadius.circular(AppRadii.pill),
         ),
-        child: Text(text, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+        child: Text(text, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
       );
 }
 
@@ -436,21 +520,10 @@ class _GalleryState extends State<_Gallery> {
     final media = widget.media;
     if (media.isEmpty) {
       return ClipRRect(
-        borderRadius: BorderRadius.circular(18),
-        child: AspectRatio(
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        child: const AspectRatio(
           aspectRatio: 16 / 10,
-          child: Container(
-            color: AppColors.divider,
-            alignment: Alignment.center,
-            child: const Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.directions_car, size: 56, color: AppColors.textSecondary),
-                SizedBox(height: 8),
-                Text('No photos yet', style: TextStyle(color: AppColors.textSecondary)),
-              ],
-            ),
-          ),
+          child: PhotoFallback(label: 'The seller has not added photos yet'),
         ),
       );
     }
@@ -459,7 +532,7 @@ class _GalleryState extends State<_Gallery> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         ClipRRect(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(AppRadii.lg),
           child: AspectRatio(
             aspectRatio: 16 / 10,
             child: Stack(
@@ -658,13 +731,18 @@ class _SpecsSection extends StatelessWidget {
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(AppRadii.md),
                   border: Border.all(color: AppColors.divider),
                 ),
                 child: Row(
                   children: [
-                    Icon(spec.icon, color: AppColors.secondary, size: 22),
-                    const SizedBox(width: 10),
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(color: AppColors.cyanTint, borderRadius: BorderRadius.circular(AppRadii.sm)),
+                      child: Icon(spec.icon, color: AppColors.secondary, size: 19),
+                    ),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,

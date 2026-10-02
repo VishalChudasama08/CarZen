@@ -14,9 +14,9 @@ class BrandList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 92,
+      height: 100,
       child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        padding: EdgeInsets.zero,
         scrollDirection: Axis.horizontal,
         itemCount: brands.length,
         separatorBuilder: (_, __) => const SizedBox(width: 14),
@@ -26,17 +26,18 @@ class BrandList extends StatelessWidget {
             onTap: () => onBrandTap?.call(brand),
             borderRadius: BorderRadius.circular(16),
             child: SizedBox(
-              width: 68,
+              width: 76,
               child: Column(
                 children: [
                   Container(
-                    width: 60,
-                    height: 60,
-                    padding: const EdgeInsets.all(12),
+                    width: 64,
+                    height: 64,
+                    padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
                       color: AppColors.surface,
                       shape: BoxShape.circle,
                       border: Border.all(color: AppColors.divider),
+                      boxShadow: AppShadows.card,
                     ),
                     child: Image.network(
                       brand.logoUrl,
@@ -51,7 +52,7 @@ class BrandList extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
                   ),
                 ],
               ),

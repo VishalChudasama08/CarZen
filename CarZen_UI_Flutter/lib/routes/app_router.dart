@@ -1,30 +1,36 @@
 import 'package:carzen_flutter/models/enums.dart';
 import 'package:carzen_flutter/pages/add_edit_car_screen.dart';
 import 'package:carzen_flutter/pages/admin_cars_screen.dart';
+import 'package:carzen_flutter/pages/admin_service_requests_screen.dart';
+import 'package:carzen_flutter/pages/admin_services_screen.dart';
 import 'package:carzen_flutter/pages/admin_orders_screen.dart';
 import 'package:carzen_flutter/pages/admin_user_detail_screen.dart';
 import 'package:carzen_flutter/pages/admin_users_screen.dart';
+import 'package:carzen_flutter/pages/book_service_screen.dart';
 import 'package:carzen_flutter/pages/browse_listings_screen.dart';
 import 'package:carzen_flutter/pages/car_details_screen.dart';
 import 'package:carzen_flutter/pages/favorites_screen.dart';
 import 'package:carzen_flutter/pages/home_page.dart';
 import 'package:carzen_flutter/pages/inquiries_screen.dart';
 import 'package:carzen_flutter/pages/inquiry_thread_screen.dart';
-import 'package:carzen_flutter/pages/integration_unavailable_screen.dart';
 import 'package:carzen_flutter/pages/login_page.dart';
 import 'package:carzen_flutter/pages/my_cars_screen.dart';
 import 'package:carzen_flutter/pages/my_orders_screen.dart';
 import 'package:carzen_flutter/pages/notifications_screen.dart';
+import 'package:carzen_flutter/pages/my_service_requests_screen.dart';
 import 'package:carzen_flutter/pages/profile_screen.dart';
 import 'package:carzen_flutter/pages/register_page.dart';
+import 'package:carzen_flutter/pages/service_history_screen.dart';
+import 'package:carzen_flutter/pages/service_request_detail_screen.dart';
+import 'package:carzen_flutter/pages/services_screen.dart';
 import 'package:carzen_flutter/routes/app_routes.dart';
 import 'package:carzen_flutter/widgets/carzen_nav_bar.dart';
 import 'package:carzen_flutter/widgets/require_auth.dart';
 import 'package:carzen_flutter/widgets/state_views.dart';
 import 'package:flutter/material.dart';
 
-/// Maps URLs to pages. Public pages (home, browse, car details, services,
-/// login, register) open without a session. Everything that reads or changes
+/// Maps URLs to pages. Public pages (home, browse, car details, the service
+/// catalog, login, register) open without a session. Everything that reads or changes
 /// account data is wrapped in [RequireAuth], which validates the token at that
 /// moment through the existing `AuthService.validateToken()`.
 class AppRouter {
@@ -73,13 +79,22 @@ class AppRouter {
       case 'profile':
         return const RequireAuth(child: ProfileScreen());
       case 'services':
-        return const IntegrationUnavailableScreen(
-          title: 'Services',
-          message: 'Car service booking is not available yet: the CarZen backend has no service '
-              'endpoints (service centres, service types or requests). This page will connect '
-              'to them as soon as they exist.',
-          section: NavSection.services,
-        );
+        // The catalog is public. Booking, requests and history are account pages.
+        switch (second) {
+          case null:
+            return const ServicesScreen();
+          case 'book':
+            return RequireAuth(userOnly: true, child: BookServiceScreen(preselectedIds: _ids(uri.queryParameters['ids'])));
+          case 'history':
+            return const RequireAuth(userOnly: true, child: ServiceHistoryScreen());
+          case 'requests':
+            if (segments.length == 2) return const RequireAuth(userOnly: true, child: MyServiceRequestsScreen());
+            final requestId = int.tryParse(segments[2]);
+            return requestId == null
+                ? const NotFoundPage()
+                : RequireAuth(userOnly: true, child: ServiceRequestDetailScreen(requestId: requestId));
+        }
+        return const NotFoundPage();
       case 'login':
         return const LoginPage();
       case 'register':
@@ -91,6 +106,10 @@ class AppRouter {
             return const RequireAuth(adminOnly: true, child: AdminCarsScreen());
           case 'orders':
             return const RequireAuth(adminOnly: true, child: AdminOrdersScreen());
+          case 'services':
+            return const RequireAuth(adminOnly: true, child: AdminServicesScreen());
+          case 'service-requests':
+            return const RequireAuth(adminOnly: true, child: AdminServiceRequestsScreen());
           case 'users':
             if (segments.length > 2) {
               final userId = int.tryParse(segments[2]);
@@ -104,6 +123,10 @@ class AppRouter {
     }
     return const NotFoundPage();
   }
+
+  /// `1,2,3` -> `[1, 2, 3]`; anything that is not a whole number is dropped.
+  static List<int> _ids(String? raw) =>
+      (raw ?? '').split(',').map((e) => int.tryParse(e.trim())).whereType<int>().toList();
 
   static Widget _browse(Uri uri) {
     final q = uri.queryParameters;

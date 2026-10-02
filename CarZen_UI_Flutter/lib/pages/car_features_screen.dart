@@ -64,7 +64,7 @@ class _CarFeaturesScreenState extends State<CarFeaturesScreen> {
       _refresh();
     } on ApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      showAppSnack(context, e.message, error: true);
     }
   }
 
@@ -74,7 +74,7 @@ class _CarFeaturesScreenState extends State<CarFeaturesScreen> {
       _refresh();
     } on ApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      showAppSnack(context, e.message, error: true);
     }
   }
 
@@ -84,8 +84,6 @@ class _CarFeaturesScreenState extends State<CarFeaturesScreen> {
       backgroundColor: AppColors.background,
       appBar: const CarZenNavBar(current: NavSection.sell, title: 'Features'),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: AppColors.secondary,
-        foregroundColor: AppColors.primary,
         onPressed: () => _openFeatureDialog(),
         child: const Icon(Icons.add),
       ),

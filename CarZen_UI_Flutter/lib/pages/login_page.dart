@@ -1,5 +1,6 @@
 import 'package:carzen_flutter/widgets/auth_error_banner.dart';
 import 'package:carzen_flutter/widgets/auth_header.dart';
+import 'package:carzen_flutter/widgets/auth_layout.dart';
 import 'package:carzen_flutter/widgets/auth_text_field.dart';
 import 'package:carzen_flutter/widgets/carzen_nav_bar.dart';
 import 'package:carzen_flutter/widgets/primary_button.dart';
@@ -74,7 +75,6 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      
       appBar: const CarZenNavBar(current: NavSection.login, title: 'Login'),
       // AppBar(
       //   // leading: const Icon(Icons.arrow_back),
@@ -87,10 +87,8 @@ class _LoginPageState extends State<LoginPage> {
       //   ),
       // ),
 
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
-          child: Form(
+      body: AuthLayout(
+        child: Form(
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -142,7 +140,6 @@ class _LoginPageState extends State<LoginPage> {
               ],
             ),
           ),
-        ),
       ),
     );
   }

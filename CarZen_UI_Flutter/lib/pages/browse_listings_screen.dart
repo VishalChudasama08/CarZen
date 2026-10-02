@@ -2,6 +2,7 @@ import 'package:carzen_flutter/models/catalog_models.dart';
 import 'package:carzen_flutter/models/enums.dart';
 import 'package:carzen_flutter/models/listing_filters.dart';
 import 'package:carzen_flutter/models/listing_models.dart';
+import 'package:carzen_flutter/models/pagination.dart';
 import 'package:carzen_flutter/routes/app_routes.dart';
 import 'package:carzen_flutter/services/api_exception.dart';
 import 'package:carzen_flutter/services/auth_gate.dart';
@@ -14,6 +15,8 @@ import 'package:carzen_flutter/utils/formatters.dart';
 import 'package:carzen_flutter/widgets/carzen_nav_bar.dart';
 import 'package:carzen_flutter/widgets/listing_card.dart';
 import 'package:carzen_flutter/widgets/listing_filter_panel.dart';
+import 'package:carzen_flutter/widgets/network_photo.dart';
+import 'package:carzen_flutter/widgets/pagination_bar.dart';
 import 'package:carzen_flutter/widgets/state_views.dart';
 import 'package:flutter/material.dart';
 
@@ -58,10 +61,8 @@ class _BrowseListingsScreenState extends State<BrowseListingsScreen> {
   Set<int> _favoriteCarIds = {};
 
   int _page = 1;
-  int _totalPages = 1;
-  int _total = 0;
+  PaginationMeta? _meta;
   bool _loading = true;
-  bool _loadingMore = false;
   Object? _error;
   int _requestId = 0;
 
@@ -77,10 +78,9 @@ class _BrowseListingsScreenState extends State<BrowseListingsScreen> {
       maxPrice: widget.maxPrice,
     );
     _searchController.text = _filters.search ?? '';
-    _scrollController.addListener(_onScroll);
     _loadBrands();
     _loadFavorites();
-    _load(reset: true);
+    _load(page: 1);
   }
 
   @override
@@ -117,27 +117,18 @@ class _BrowseListingsScreenState extends State<BrowseListingsScreen> {
     }
   }
 
-  void _onScroll() {
-    if (!_scrollController.hasClients) return;
-    final position = _scrollController.position;
-    if (position.pixels >= position.maxScrollExtent - 400) _loadMore();
-  }
-
-  Future<void> _load({required bool reset}) async {
+  /// Loads one page of `GET /v1/listings` for the current search, filters and
+  /// sort. Changing the page only changes [page]; everything else is kept.
+  Future<void> _load({required int page}) async {
     final requestId = ++_requestId;
     setState(() {
-      if (reset) {
-        _loading = true;
-        _page = 1;
-      } else {
-        _loadingMore = true;
-      }
+      _loading = true;
       _error = null;
     });
     try {
       final f = _filters;
       final result = await _marketplaceService.listPublicListings(
-        page: _page,
+        page: page,
         limit: _pageSize,
         search: f.search,
         brandId: f.brandId,
@@ -153,42 +144,45 @@ class _BrowseListingsScreenState extends State<BrowseListingsScreen> {
         city: f.city,
         sortBy: f.sort,
       );
+      // The page no longer exists (listings were removed meanwhile): go to the last real one.
+      if (result.data.isEmpty && page > 1 && result.pagination.totalPages < page) {
+        return _load(page: result.pagination.totalPages < 1 ? 1 : result.pagination.totalPages);
+      }
       // The list endpoint omits the car snapshot, so each card's detail is fetched.
       final details = await _marketplaceService.expandWithCarDetails(result.data);
       if (!mounted || requestId != _requestId) return;
       setState(() {
-        if (reset) _listings.clear();
-        _listings.addAll(details);
-        _totalPages = result.pagination.totalPages;
-        _total = result.pagination.total;
+        _listings
+          ..clear()
+          ..addAll(details);
+        _page = result.pagination.page;
+        _meta = result.pagination;
         _loading = false;
-        _loadingMore = false;
       });
     } catch (error) {
       if (!mounted || requestId != _requestId) return;
       setState(() {
         _error = error;
         _loading = false;
-        _loadingMore = false;
-        if (!reset && _page > 1) _page--;
       });
     }
   }
 
-  Future<void> _loadMore() async {
-    if (_loading || _loadingMore || _error != null || _page >= _totalPages) return;
-    _page++;
-    await _load(reset: false);
+  void _goToPage(int page) {
+    _load(page: page);
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(0, duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
+    }
   }
 
   void _applyFilters(ListingFilters filters) {
     setState(() => _filters = filters.withSearch(_filters.search).withSort(_filters.sort));
-    _load(reset: true);
+    _load(page: 1);
   }
 
   void _submitSearch(String value) {
     setState(() => _filters = _filters.withSearch(value));
-    _load(reset: true);
+    _load(page: 1);
   }
 
   Future<void> _toggleFavorite(int carId, bool wantFavorite) async {
@@ -207,7 +201,7 @@ class _BrowseListingsScreenState extends State<BrowseListingsScreen> {
       });
     } on ApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      showAppSnack(context, e.message, error: true);
     }
   }
 
@@ -242,7 +236,9 @@ class _BrowseListingsScreenState extends State<BrowseListingsScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: CarZenNavBar(current: NavSection.buy, title: widget.title),
+      bottomNavigationBar: const CarZenBottomBar(current: NavSection.buy),
       body: SafeArea(
+        bottom: false,
         child: LayoutBuilder(
           builder: (context, constraints) {
             final wide = constraints.maxWidth >= Breakpoints.expanded;
@@ -255,13 +251,20 @@ class _BrowseListingsScreenState extends State<BrowseListingsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     SizedBox(
-                      width: 300,
+                      width: 310,
                       child: SingleChildScrollView(
-                        padding: const EdgeInsets.fromLTRB(24, 8, 12, 32),
-                        child: ListingFilterPanel(initial: _filters, brands: _brands, onApply: _applyFilters),
+                        padding: const EdgeInsets.fromLTRB(24, 20, 12, 32),
+                        child: Container(
+                          padding: const EdgeInsets.all(18),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(AppRadii.lg),
+                            border: Border.all(color: AppColors.divider),
+                          ),
+                          child: ListingFilterPanel(initial: _filters, brands: _brands, onApply: _applyFilters),
+                        ),
                       ),
                     ),
-                    const VerticalDivider(width: 1, color: AppColors.divider),
                     Expanded(child: results),
                   ],
                 ),
@@ -289,7 +292,7 @@ class _BrowseListingsScreenState extends State<BrowseListingsScreen> {
           },
           onSort: (sort) {
             setState(() => _filters = _filters.withSort(sort));
-            _load(reset: true);
+            _load(page: 1);
           },
           onOpenFilters: _openFilterSheet,
         ),
@@ -298,10 +301,27 @@ class _BrowseListingsScreenState extends State<BrowseListingsScreen> {
     );
   }
 
+  /// "Showing 13–24 of 56 cars" with the active search spelled out, so the
+  /// count always explains what the list is.
+  String _summary() {
+    final meta = _meta;
+    if (meta == null) return '';
+    if (meta.total == 0) return 'No cars found';
+    final first = (meta.page - 1) * meta.limit + 1;
+    final last = meta.page * meta.limit > meta.total ? meta.total : meta.page * meta.limit;
+    final base = meta.totalPages <= 1
+        ? '${formatCount(meta.total)} car${meta.total == 1 ? '' : 's'} found'
+        : 'Showing ${formatCount(first)}–${formatCount(last)} of ${formatCount(meta.total)} cars';
+    final search = _filters.search;
+    return search == null ? base : '$base for "$search"';
+  }
+
   Widget _buildBody() {
-    if (_loading) return const LoadingView(label: 'Finding cars...');
+    if (_loading && _listings.isEmpty) {
+      return const SingleChildScrollView(padding: EdgeInsets.all(16), child: SkeletonGrid(count: 6, tileHeight: 360));
+    }
     if (_error != null && _listings.isEmpty) {
-      return ApiErrorView(error: _error!, onRetry: () => _load(reset: true), fallback: 'Could not load cars.');
+      return ApiErrorView(error: _error!, onRetry: () => _load(page: _page), fallback: 'Could not load cars.');
     }
     if (_listings.isEmpty) {
       return EmptyStateView(
@@ -313,7 +333,7 @@ class _BrowseListingsScreenState extends State<BrowseListingsScreen> {
                 onPressed: () {
                   _searchController.clear();
                   setState(() => _filters = ListingFilters(sort: _filters.sort));
-                  _load(reset: true);
+                  _load(page: 1);
                 },
                 child: const Text('Clear search and filters'),
               )
@@ -322,84 +342,53 @@ class _BrowseListingsScreenState extends State<BrowseListingsScreen> {
     }
 
     return RefreshIndicator(
-      onRefresh: () => _load(reset: true),
+      onRefresh: () => _load(page: _page),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          const spacing = 14.0;
-          const horizontalPadding = 16.0;
+          const spacing = 16.0;
+          final horizontalPadding = constraints.maxWidth >= 900 ? 24.0 : 16.0;
           final available = constraints.maxWidth - horizontalPadding * 2;
-          final columns = (available / 250).floor().clamp(2, 4);
+          final columns = (available / 270).floor().clamp(1, 4);
           final cardWidth = (available - spacing * (columns - 1)) / columns;
-          // Card = 16:11 photo + ~98px of text.
-          final aspect = cardWidth / (cardWidth * 11 / 16 + 98);
-          return CustomScrollView(
+          return SingleChildScrollView(
             controller: _scrollController,
             physics: const AlwaysScrollableScrollPhysics(),
-            slivers: [
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(horizontalPadding, 4, horizontalPadding, 8),
-                sliver: SliverToBoxAdapter(
-                  child: Text(
-                    '${formatCount(_total)} car${_total == 1 ? '' : 's'} found',
-                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
-                  ),
+            padding: EdgeInsets.fromLTRB(horizontalPadding, 4, horizontalPadding, 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Text(_summary(), style: const TextStyle(color: AppColors.textSecondary, fontSize: 13.5, fontWeight: FontWeight.w600)),
                 ),
-              ),
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: horizontalPadding),
-                sliver: SliverGrid(
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: columns,
-                    mainAxisSpacing: spacing,
-                    crossAxisSpacing: spacing,
-                    childAspectRatio: aspect,
+                if (_loading) const Padding(padding: EdgeInsets.only(bottom: 12), child: LinearProgressIndicator(minHeight: 3)),
+                if (_error != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: InlineError(_error is ApiException ? (_error as ApiException).message : 'Could not load this page.'),
                   ),
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final listing = _listings[index];
-                      return ListingCard(
+                Wrap(
+                  spacing: spacing,
+                  runSpacing: spacing,
+                  children: [
+                    for (final listing in _listings)
+                      ListingCard(
                         listing: listing,
-                        width: double.infinity,
+                        width: cardWidth,
                         isFavorite: _favoriteCarIds.contains(listing.car.id),
                         onFavoriteToggle: (value) => _toggleFavorite(listing.car.id, value),
                         onTap: () => Navigator.of(context).pushNamed(AppRoutes.carDetails(listing.id)),
-                      );
-                    },
-                    childCount: _listings.length,
-                  ),
+                      ),
+                  ],
                 ),
-              ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 20),
-                  child: Center(child: _footer()),
-                ),
-              ),
-            ],
+                const SizedBox(height: 28),
+                PaginationBar(meta: _meta, busy: _loading, itemLabel: 'cars', onPageChanged: _goToPage),
+              ],
+            ),
           );
         },
       ),
     );
-  }
-
-  Widget _footer() {
-    if (_loadingMore) {
-      return const CircularProgressIndicator(color: AppColors.secondary, strokeWidth: 2.4);
-    }
-    if (_error != null) {
-      final message = _error is ApiException ? (_error as ApiException).message : 'Could not load more cars.';
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(message, style: const TextStyle(color: AppColors.favorite)),
-          TextButton(onPressed: _loadMore, child: const Text('Try again')),
-        ],
-      );
-    }
-    if (_page < _totalPages) {
-      return OutlinedButton(onPressed: _loadMore, child: const Text('Load more'));
-    }
-    return const Text("You've seen every match", style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5));
   }
 }
 
@@ -434,10 +423,10 @@ class _Toolbar extends StatelessWidget {
         for (final option in ListingSort.values) PopupMenuItem<ListingSort>(value: option, child: Text(option.label)),
       ],
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppRadii.md),
           border: Border.all(color: AppColors.divider),
         ),
         child: Row(
@@ -454,7 +443,7 @@ class _Toolbar extends StatelessWidget {
     );
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
       child: Row(
         children: [
           Expanded(

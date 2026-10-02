@@ -59,3 +59,14 @@ Every place the UI needs real data is marked with a `// TODO:` comment in
   search/filter/favorite API requests.
 - Add an `ApiService`/`http` (or `dio`) client in a new `lib/services/`
   folder when the backend endpoints are ready.
+
+## Design system, Services and pagination (UI refresh)
+
+* **Design system** - `lib/theme/app_theme.dart` holds the palette (`AppColors`), spacing (`AppSpacing`), radii (`AppRadii`), shadows and every component theme. Shared building blocks live in `lib/widgets/`: `AppLogo`, `SurfaceCard`, `PageContainer` / `PageHeader`, `StatusPill`, `NetworkPhoto` / `SkeletonBox`, and the state views in `state_views.dart` (loading, empty, error + retry, `ApiErrorView` for 401/403/404/network/role errors).
+* **Navigation** - `carzen_nav_bar.dart`: navy top bar with inline links on wide screens, a grouped menu sheet plus `CarZenBottomBar` on phones. Roles are only `user` and `admin`; admins get Users, Car Approvals, Orders, Service Catalog and Service Requests instead of Buy / Sell / Services.
+* **Services (customer)** - `/services` catalog (public, search, pagination), `/services/book` (services -> car -> date & time -> address -> notes; protected), `/services/requests` and `/services/requests/{id}` (track / cancel), `/services/history`. API wrappers: `service_catalog_api.dart`, `service_request_api.dart`, `address_service.dart`.
+* **Services (admin)** - `/admin/services` (create, edit, activate / deactivate, delete) and `/admin/service-requests` (accept, reject, schedule, start, complete, cancel). Only actions backed by real endpoints are shown.
+* **Addresses** - the backend reads `address_id` when a service request is created (the schema marks it optional but the code fails without it), so the booking form always asks for a saved address and can add one.
+* **Pagination** - `PagedController` + `PaginationBar` (numbered pages on wide screens, Prev / "Page x of y" / Next on phones) drive Browse, services, service requests, history, orders, messages, notifications, car approvals and "My cars". Search, filters and sort are kept when the page changes. Endpoints that return plain lists (favourites, saved addresses, service cars, admin users) are not paginated.
+* **Payment** is intentionally not implemented. `payment_status` values are shown as information only and no `/v1/payments` or service payment routes are called.
+* **Demo data** - see `../CarZen_Demo_Data_README.md`.

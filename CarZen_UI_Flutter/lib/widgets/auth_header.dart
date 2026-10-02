@@ -12,11 +12,10 @@ class AuthHeader extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 20),
         Text(title, style: Theme.of(context).textTheme.headlineMedium),
         const SizedBox(height: 6),
         Text(subTitle, style: Theme.of(context).textTheme.bodyMedium),
-        const SizedBox(height: 28)
+        const SizedBox(height: 24)
       ],
     );
   }

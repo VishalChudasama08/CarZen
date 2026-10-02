@@ -36,9 +36,6 @@ class QuickFilterChips extends StatelessWidget {
   void _showPicker(BuildContext context, QuickFilter filter) {
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
       builder: (context) {
         return SafeArea(
           child: Column(
@@ -71,9 +68,9 @@ class QuickFilterChips extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 40,
+      height: 44,
       child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        padding: EdgeInsets.zero,
         scrollDirection: Axis.horizontal,
         itemCount: filters.length,
         separatorBuilder: (_, __) => const SizedBox(width: 10),
@@ -82,25 +79,25 @@ class QuickFilterChips extends StatelessWidget {
           final isDefault = filter.value == filter.options.first;
           return InkWell(
             onTap: () => _showPicker(context, filter),
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(AppRadii.pill),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: isDefault ? AppColors.surface : AppColors.primary,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(AppRadii.pill),
                 border: Border.all(color: isDefault ? AppColors.divider : AppColors.primary),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(filter.icon, size: 16, color: isDefault ? AppColors.textSecondary : AppColors.secondary),
+                  Icon(filter.icon, size: 16, color: isDefault ? AppColors.textSecondary : AppColors.cyan),
                   const SizedBox(width: 6),
                   Text(
                     filter.value,
                     style: TextStyle(
                       fontSize: 13,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w700,
                       color: isDefault ? AppColors.textPrimary : Colors.white,
                     ),
                   ),

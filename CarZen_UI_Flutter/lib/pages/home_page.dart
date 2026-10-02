@@ -1,10 +1,12 @@
 import 'package:carzen_flutter/routes/app_routes.dart';
 import 'package:carzen_flutter/utils/breakpoints.dart';
-import 'package:carzen_flutter/widgets/car_search_bar.dart';
 import 'package:carzen_flutter/widgets/carzen_nav_bar.dart';
 import 'package:carzen_flutter/widgets/hero_banner.dart';
 import 'package:carzen_flutter/widgets/quick_filter_chips.dart';
 import 'package:carzen_flutter/widgets/section_header.dart';
+import 'package:carzen_flutter/widgets/page_container.dart';
+import 'package:carzen_flutter/widgets/network_photo.dart';
+import 'package:carzen_flutter/services/session_controller.dart';
 import 'package:carzen_flutter/widgets/brand_list.dart';
 import 'package:carzen_flutter/widgets/listing_card.dart';
 import 'package:carzen_flutter/widgets/state_views.dart';
@@ -33,6 +35,7 @@ class _HomePageState extends State<HomePage>{
   final _catalogService = CatalogService();
   final _marketplaceService = MarketplaceService();
   final _authService = AuthService();
+  final _session = SessionController.instance;
 
   Future<List<CatalogBrand>>? _brandsFuture;
   Future<List<ListingDetail>>? _featuredFuture;
@@ -48,6 +51,7 @@ class _HomePageState extends State<HomePage>{
   @override
   void initState() {
     super.initState();
+    _session.refresh();
     _loadBrands();
     _loadFeatured();
     _loadLocalAuth();
@@ -148,7 +152,7 @@ class _HomePageState extends State<HomePage>{
       // Revert the optimistic update and let the user know.
       if (!mounted) return;
       setState(() => _favoriteCarIds = value ? (_favoriteCarIds.difference({carId})) : ({..._favoriteCarIds, carId}));
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      showAppSnack(context, e.message, error: true);
     }
   }
 
@@ -188,7 +192,6 @@ class _HomePageState extends State<HomePage>{
 
   @override
   Widget build(BuildContext context) {
-
     final brandOptions = ['Any Brand', ..._brands.map((b) => b.name)];
     final filters = [
       QuickFilter(
@@ -233,114 +236,186 @@ class _HomePageState extends State<HomePage>{
       ),
     ];
 
-
-    return Scaffold(
-      backgroundColor: AppColors.background,
-
-      appBar: const CarZenNavBar(current: NavSection.home),
-
-      body: SafeArea(
-        bottom: false,
-        child: RefreshIndicator(
-          onRefresh: _refreshAll,
-          child: ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.only(bottom: 28),
-            children: [
-              Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: Breakpoints.maxContentWidth),
+    return AnimatedBuilder(
+      animation: _session,
+      builder: (context, _) {
+        final isAdmin = _session.isAdmin;
+        return Scaffold(
+          appBar: const CarZenNavBar(current: NavSection.home),
+          bottomNavigationBar: const CarZenBottomBar(current: NavSection.home),
+          body: SafeArea(
+            bottom: false,
+            child: RefreshIndicator(
+              onRefresh: _refreshAll,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: PageContainer(
+                  verticalPadding: AppSpacing.lg,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-              HeroBanner(onExplorePressed: _handleExplore),
-              CarSearchBar(
-                controller: _searchController,
-                onSubmitted: _handleSearch,
-                onFilterTap: _handleExplore,
-              ),
-              const SizedBox(height: 14),
-              QuickFilterChips(filters: filters),
-              const SizedBox(height: 26),
-              SectionHeader(title: 'Featured Cars', onActionTap: _handleExplore),
-              SizedBox(
-                // Compact: one horizontally scrolling row. Expanded: a wrapping
-                // grid, so the height must follow the content.
-                height: Breakpoints.isExpanded(context) ? null : 246,
-                child: FutureBuilder<List<ListingDetail>>(
-                  future: _featuredFuture,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState != ConnectionState.done) {
-                      return const LoadingView();
-                    }
-                    if (snapshot.hasError) {
-                      final message = snapshot.error is ApiException
-                          ? (snapshot.error as ApiException).message
-                          : 'Could not load cars right now.';
-                      return ErrorStateView(message: message, onRetry: () => setState(_loadFeatured));
-                    }
-                    final listings = snapshot.data!;
-                    if (listings.isEmpty) {
-                      return const EmptyStateView(
-                        icon: Icons.directions_car_outlined,
-                        title: 'No cars found',
-                        message: 'Try different filters, or check back soon.',
-                      );
-                    }
-                    Widget cardFor(ListingDetail listing, {double width = 220}) => ListingCard(
-                          listing: listing,
-                          width: width,
-                          isFavorite: _favoriteCarIds.contains(listing.car.id),
-                          onFavoriteToggle: (value) => _toggleFavorite(listing.car.id, value),
-                          onTap: () => Navigator.of(context).pushNamed(AppRoutes.carDetails(listing.id)),
-                        );
-                    if (Breakpoints.isExpanded(context)) {
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Wrap(
-                          spacing: 16,
-                          runSpacing: 16,
-                          children: [for (final listing in listings) cardFor(listing, width: 270)],
-                        ),
-                      );
-                    }
-                    return ListView.separated(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      scrollDirection: Axis.horizontal,
-                      itemCount: listings.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 14),
-                      itemBuilder: (context, index) => cardFor(listings[index]),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 26),
-              const SectionHeader(title: 'Popular Brands', actionLabel: null),
-              FutureBuilder<List<CatalogBrand>>(
-                future: _brandsFuture,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState != ConnectionState.done || !snapshot.hasData) {
-                    return const SizedBox(height: 92, child: LoadingView());
-                  }
-                  final brands =
-                  snapshot.data!.map((b) => CarBrand(name: b.name, logoUrl: b.logoUrl ?? '')).toList();
-                  return BrandList(
-                    brands: brands,
-                    onBrandTap: (item) => setState(() {
-                      _selectedBrand = _brands.firstWhere((b) => b.name == item.name);
-                      _loadFeatured();
-                    }),
-                  );
-                },
-              ),
+                      HeroBanner(
+                        searchController: _searchController,
+                        onSearch: _handleSearch,
+                        onExplore: _handleExplore,
+                        onFilterTap: _handleExplore,
+                        onSell: isAdmin ? null : () => Navigator.of(context).pushNamed(AppRoutes.sell),
+                        onServices: isAdmin ? null : () => Navigator.of(context).pushNamed(AppRoutes.services),
+                      ),
+                      const SizedBox(height: AppSpacing.xl),
+                      QuickFilterChips(filters: filters),
+                      const SizedBox(height: AppSpacing.section),
+                      SectionHeader(
+                        title: 'Featured cars',
+                        subtitle: 'Fresh listings, ready to view.',
+                        actionLabel: 'View all',
+                        onActionTap: _handleExplore,
+                      ),
+                      _featured(context),
+                      const SizedBox(height: AppSpacing.section),
+                      const SectionHeader(title: 'Popular brands', subtitle: 'Tap a brand to narrow the featured cars.', actionLabel: null),
+                      FutureBuilder<List<CatalogBrand>>(
+                        future: _brandsFuture,
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState != ConnectionState.done) {
+                            return const SizedBox(height: 100, child: LoadingView());
+                          }
+                          if (snapshot.hasError || !(snapshot.data?.isNotEmpty ?? false)) {
+                            return const SizedBox.shrink();
+                          }
+                          final brands = snapshot.data!.map((b) => CarBrand(name: b.name, logoUrl: b.logoUrl ?? '')).toList();
+                          return BrandList(
+                            brands: brands,
+                            onBrandTap: (item) => setState(() {
+                              _selectedBrand = _brands.firstWhere((b) => b.name == item.name);
+                              _loadFeatured();
+                            }),
+                          );
+                        },
+                      ),
+                      if (!isAdmin) ...[
+                        const SizedBox(height: AppSpacing.section),
+                        _ServicesPromo(onTap: () => Navigator.of(context).pushNamed(AppRoutes.services)),
+                      ],
+                      const SizedBox(height: AppSpacing.xl),
                     ],
                   ),
                 ),
               ),
-            ],
+            ),
           ),
+        );
+      },
+    );
+  }
+
+  Widget _featured(BuildContext context) {
+    return FutureBuilder<List<ListingDetail>>(
+      future: _featuredFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const SkeletonGrid(count: 4, tileHeight: 360);
+        }
+        if (snapshot.hasError) {
+          return SizedBox(
+            height: 300,
+            child: ApiErrorView(error: snapshot.error!, onRetry: () => setState(_loadFeatured), fallback: 'Could not load cars right now.'),
+          );
+        }
+        final listings = snapshot.data!;
+        if (listings.isEmpty) {
+          return SizedBox(
+            height: 280,
+            child: EmptyStateView(
+              icon: Icons.directions_car_outlined,
+              title: 'No cars match these filters',
+              message: 'Try different filters, or check back soon.',
+              action: OutlinedButton(
+                onPressed: () => setState(() {
+                  _selectedBrand = null;
+                  _selectedPrice = quickFilterPrices.first;
+                  _selectedFuel = quickFilterFuel.first;
+                  _selectedTransmission = quickFilterTransmission.first;
+                  _loadFeatured();
+                }),
+                child: const Text('Clear filters'),
+              ),
+            ),
+          );
+        }
+        final shown = Breakpoints.isCompact(context) ? listings.take(4).toList() : listings;
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            const spacing = 18.0;
+            final columns = (constraints.maxWidth / 270).floor().clamp(1, 4);
+            final width = (constraints.maxWidth - spacing * (columns - 1)) / columns;
+            return Wrap(
+              spacing: spacing,
+              runSpacing: spacing,
+              children: [
+                for (final listing in shown)
+                  ListingCard(
+                    listing: listing,
+                    width: width,
+                    isFavorite: _favoriteCarIds.contains(listing.car.id),
+                    onFavoriteToggle: (value) => _toggleFavorite(listing.car.id, value),
+                    onTap: () => Navigator.of(context).pushNamed(AppRoutes.carDetails(listing.id)),
+                  ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+/// Invitation to the Services area, shown to non-admin visitors.
+class _ServicesPromo extends StatelessWidget {
+  final VoidCallback onTap;
+  const _ServicesPromo({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final compact = Breakpoints.isCompact(context);
+    final text = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('CARZEN WORKSHOP', style: TextStyle(color: AppColors.cyan, fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1.1)),
+        const SizedBox(height: 8),
+        const Text(
+          'Keep your car running like new.',
+          style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800, height: 1.15),
         ),
+        const SizedBox(height: 8),
+        const Text(
+          'Pick the services you need, choose a time slot, and follow the progress from your phone.',
+          style: TextStyle(color: AppColors.textOnDarkMuted, height: 1.45),
+        ),
+        const SizedBox(height: 18),
+        ElevatedButton(onPressed: onTap, child: const Text('See services')),
+      ],
+    );
+    return Container(
+      padding: EdgeInsets.all(compact ? 22 : 36),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppRadii.xl),
+        gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [AppColors.primary, AppColors.primarySoft]),
       ),
+      child: compact
+          ? text
+          : Row(
+              children: [
+                Expanded(child: text),
+                const SizedBox(width: 24),
+                Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(color: AppColors.cyan.withValues(alpha: 0.14), shape: BoxShape.circle),
+                  child: const Icon(Icons.home_repair_service_rounded, size: 56, color: AppColors.cyan),
+                ),
+              ],
+            ),
     );
   }
 }

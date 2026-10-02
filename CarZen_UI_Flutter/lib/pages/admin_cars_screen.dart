@@ -1,16 +1,20 @@
-import 'package:carzen_flutter/widgets/content_width.dart';
-import 'package:carzen_flutter/widgets/carzen_nav_bar.dart';
-import 'package:flutter/material.dart';
 import 'package:carzen_flutter/models/car_models.dart';
 import 'package:carzen_flutter/models/enums.dart';
 import 'package:carzen_flutter/services/api_exception.dart';
 import 'package:carzen_flutter/services/car_service.dart';
 import 'package:carzen_flutter/theme/app_theme.dart';
+import 'package:carzen_flutter/utils/formatters.dart';
+import 'package:carzen_flutter/widgets/carzen_nav_bar.dart';
+import 'package:carzen_flutter/widgets/page_container.dart';
+import 'package:carzen_flutter/widgets/paged_controller.dart';
+import 'package:carzen_flutter/widgets/paged_list_view.dart';
 import 'package:carzen_flutter/widgets/state_views.dart';
+import 'package:carzen_flutter/widgets/status_pill.dart';
+import 'package:carzen_flutter/widgets/surface_card.dart';
+import 'package:flutter/material.dart';
 
-/// Admin-only car moderation — `GET /v1/admin/cars`,
-/// `POST /v1/admin/cars/{id}/approve|reject|verify|unverify`.
-/// Only reachable from [ProfileScreen] when `role == "admin"`.
+/// Admin-only car moderation — `GET /v1/admin/cars` (paginated, status
+/// filter) and `POST /v1/admin/cars/{id}/approve|reject|verify|unverify`.
 class AdminCarsScreen extends StatefulWidget {
   const AdminCarsScreen({super.key});
 
@@ -20,214 +24,196 @@ class AdminCarsScreen extends StatefulWidget {
 
 class _AdminCarsScreenState extends State<AdminCarsScreen> {
   final _carService = CarService();
+  late final PagedController<CarRecord> _paged;
   CarApprovalStatus? _filter = CarApprovalStatus.pendingApproval;
-  late Future<List<CarRecord>> _future;
+  final Set<int> _busy = {};
 
   @override
   void initState() {
     super.initState();
-    _load();
+    _paged = PagedController<CarRecord>(
+      limit: 10,
+      fetch: (page, limit) => _carService.listAdminCars(page: page, limit: limit, status: _filter),
+    )..load();
   }
 
-  void _load() {
-    _future = _carService.listAdminCars(limit: 50, status: _filter).then((p) => p.data);
+  @override
+  void dispose() {
+    _paged.dispose();
+    super.dispose();
   }
 
-  Future<void> _refresh() async {
-    setState(_load);
-    await _future;
+  void _setFilter(CarApprovalStatus? filter) {
+    setState(() => _filter = filter);
+    _paged.reset();
   }
-
-  Future<void> _approve(int carId) => _runAction(() => _carService.approveCar(carId));
-  Future<void> _verify(int carId) => _runAction(() => _carService.verifyCar(carId));
-  Future<void> _unverify(int carId) => _runAction(() => _carService.unverifyCar(carId));
 
   Future<void> _reject(int carId) async {
     final controller = TextEditingController();
-    final confirmed = await showDialog<bool>(
+    final formKey = GlobalKey<FormState>();
+    final reason = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Reject Car'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(labelText: 'Reason (min 5 characters)'),
-          maxLines: 3,
+        title: const Text('Reject car'),
+        content: Form(
+          key: formKey,
+          child: TextFormField(
+            controller: controller,
+            decoration: const InputDecoration(labelText: 'Reason for the owner *', alignLabelWithHint: true),
+            maxLines: 3,
+            validator: (v) => (v == null || v.trim().length < 5) ? 'Please give a reason (at least 5 characters)' : null,
+          ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Reject')),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.favorite),
+            onPressed: () {
+              if (formKey.currentState!.validate()) Navigator.pop(context, controller.text.trim());
+            },
+            child: const Text('Reject'),
+          ),
         ],
       ),
     );
-    if (confirmed != true || controller.text.trim().length < 5) return;
-    await _runAction(() => _carService.rejectCar(carId, controller.text.trim()));
+    controller.dispose();
+    if (reason == null) return;
+    await _runAction(carId, () => _carService.rejectCar(carId, reason), 'Car rejected.');
   }
 
-  Future<void> _runAction(Future<void> Function() action) async {
+  Future<void> _runAction(int carId, Future<void> Function() action, String success) async {
+    setState(() => _busy.add(carId));
     try {
       await action();
-      _refresh();
-    } on ApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      showAppSnack(context, success);
+      await _paged.refresh();
+    } on ApiException catch (e) {
+      if (mounted) showAppSnack(context, e.message, error: true);
+    } finally {
+      if (mounted) setState(() => _busy.remove(carId));
     }
   }
+
+  Widget _chip(String label, CarApprovalStatus? value) {
+    final on = _filter == value;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: ChoiceChip(
+        label: Text(label),
+        selected: on,
+        showCheckmark: false,
+        selectedColor: AppColors.cyanTint,
+        side: BorderSide(color: on ? AppColors.secondary : AppColors.divider),
+        labelStyle: TextStyle(fontWeight: FontWeight.w700, color: on ? AppColors.secondary : AppColors.textPrimary),
+        onSelected: (_) => _setFilter(value),
+      ),
+    );
+  }
+
+  StatusTone _tone(CarApprovalStatus s) => switch (s) {
+        CarApprovalStatus.approved => StatusTone.success,
+        CarApprovalStatus.rejected => StatusTone.danger,
+        _ => StatusTone.warning,
+      };
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: const CarZenNavBar(current: NavSection.adminCars, title: 'Car Approvals'),
-      body: ContentWidth(
-        maxWidth: 1000,
-        child: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-              child: SizedBox(
-                height: 38,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  children: [
-                    _FilterChip(
-                        label: 'Pending',
-                        selected: _filter == CarApprovalStatus.pendingApproval,
-                        onTap: () => setState(() {
-                              _filter = CarApprovalStatus.pendingApproval;
-                              _load();
-                            })),
-                    const SizedBox(width: 8),
-                    _FilterChip(
-                        label: 'Approved',
-                        selected: _filter == CarApprovalStatus.approved,
-                        onTap: () => setState(() {
-                              _filter = CarApprovalStatus.approved;
-                              _load();
-                            })),
-                    const SizedBox(width: 8),
-                    _FilterChip(
-                        label: 'Rejected',
-                        selected: _filter == CarApprovalStatus.rejected,
-                        onTap: () => setState(() {
-                              _filter = CarApprovalStatus.rejected;
-                              _load();
-                            })),
-                    const SizedBox(width: 8),
-                    _FilterChip(
-                        label: 'All',
-                        selected: _filter == null,
-                        onTap: () => setState(() {
-                              _filter = null;
-                              _load();
-                            })),
-                  ],
-                ),
-              ),
+      bottomNavigationBar: const CarZenBottomBar(current: NavSection.adminCars),
+      body: SafeArea(
+        bottom: false,
+        child: PagedListView<CarRecord>(
+          controller: _paged,
+          maxWidth: 1000,
+          itemLabel: 'cars',
+          header: AnimatedBuilder(
+            animation: _paged,
+            builder: (context, _) => PageHeader(
+              title: 'Car approvals',
+              subtitle: _paged.meta == null
+                  ? 'Review cars submitted by users.'
+                  : '${formatCount(_paged.meta!.total)} car${_paged.meta!.total == 1 ? '' : 's'} match this filter.',
+              icon: Icons.fact_check_rounded,
             ),
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: _refresh,
-                child: FutureBuilder<List<CarRecord>>(
-                  future: _future,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState != ConnectionState.done) {
-                      return const LoadingView(label: 'Loading cars...');
-                    }
-                    if (snapshot.hasError) {
-                      final message = snapshot.error is ApiException
-                          ? (snapshot.error as ApiException).message
-                          : 'Could not load cars.';
-                      return ErrorStateView(message: message, onRetry: _refresh);
-                    }
-                    final cars = snapshot.data!;
-                    if (cars.isEmpty) {
-                      return ListView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        children: const [
-                          SizedBox(height: 80),
-                          EmptyStateView(title: 'No cars', message: 'Nothing matches this filter right now.'),
-                        ],
-                      );
-                    }
-                    return ListView.separated(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                      itemCount: cars.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 10),
-                      itemBuilder: (context, index) {
-                        final car = cars[index];
-                        return Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: AppColors.surface,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: AppColors.divider),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('${car.manufacturingYear} · ${car.city}, ${car.state}',
-                                  style: const TextStyle(fontWeight: FontWeight.w700)),
-                              const SizedBox(height: 3),
-                              Text('${car.fuelType.label} · ${car.transmission.label} · ${car.approvalStatus.label}',
-                                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 12.5)),
-                              const SizedBox(height: 10),
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: [
-                                  if (car.approvalStatus == CarApprovalStatus.pendingApproval) ...[
-                                    OutlinedButton(onPressed: () => _approve(car.id), child: const Text('Approve')),
-                                    OutlinedButton(
-                                      onPressed: () => _reject(car.id),
-                                      style: OutlinedButton.styleFrom(foregroundColor: AppColors.favorite),
-                                      child: const Text('Reject'),
-                                    ),
-                                  ],
-                                  OutlinedButton(
-                                    onPressed: () => car.isVerified ? _unverify(car.id) : _verify(car.id),
-                                    child: Text(car.isVerified ? 'Unverify' : 'Verify'),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    );
-                  },
-                ),
+          ),
+          filters: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(children: [
+              _chip('Pending', CarApprovalStatus.pendingApproval),
+              _chip('Approved', CarApprovalStatus.approved),
+              _chip('Rejected', CarApprovalStatus.rejected),
+              _chip('All', null),
+            ]),
+          ),
+          empty: const EmptyStateView(
+            icon: Icons.fact_check_outlined,
+            title: 'No cars here',
+            message: 'Nothing matches this filter right now.',
+          ),
+          errorFallback: 'Could not load cars.',
+          itemBuilder: (context, car) {
+            final busy = _busy.contains(car.id);
+            return SurfaceCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '${car.manufacturingYear} · ${car.city}, ${car.state}',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                      ),
+                      StatusPill(label: car.approvalStatus.label, tone: _tone(car.approvalStatus)),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    [
+                      'Car #${car.id}',
+                      car.fuelType.label,
+                      car.transmission.label,
+                      formatKm(car.mileageKm),
+                      if (car.isVerified) 'Verified',
+                    ].join(' · '),
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      if (car.approvalStatus == CarApprovalStatus.pendingApproval) ...[
+                        FilledButton(
+                          onPressed: busy ? null : () => _runAction(car.id, () => _carService.approveCar(car.id), 'Car approved.'),
+                          child: const Text('Approve'),
+                        ),
+                        OutlinedButton(
+                          onPressed: busy ? null : () => _reject(car.id),
+                          style: OutlinedButton.styleFrom(foregroundColor: AppColors.favorite),
+                          child: const Text('Reject'),
+                        ),
+                      ],
+                      OutlinedButton(
+                        onPressed: busy
+                            ? null
+                            : () => car.isVerified
+                                ? _runAction(car.id, () => _carService.unverifyCar(car.id), 'Verification removed.')
+                                : _runAction(car.id, () => _carService.verifyCar(car.id), 'Car verified.'),
+                        child: Text(car.isVerified ? 'Remove verification' : 'Verify'),
+                      ),
+                      if (busy) const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
+                    ],
+                  ),
+                ],
               ),
-            ),
-          ],
+            );
+          },
         ),
-      ),
-      ),
-    );
-  }
-}
-
-class _FilterChip extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-  const _FilterChip({required this.label, required this.selected, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: selected ? AppColors.primary : AppColors.surface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: selected ? AppColors.primary : AppColors.divider),
-        ),
-        child: Text(label, style: TextStyle(color: selected ? Colors.white : AppColors.textPrimary, fontSize: 13)),
       ),
     );
   }

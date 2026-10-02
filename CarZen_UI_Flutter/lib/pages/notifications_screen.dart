@@ -5,6 +5,10 @@ import 'package:carzen_flutter/services/engagement_service.dart';
 import 'package:carzen_flutter/theme/app_theme.dart';
 import 'package:carzen_flutter/utils/formatters.dart';
 import 'package:carzen_flutter/widgets/carzen_nav_bar.dart';
+import 'package:carzen_flutter/services/session_controller.dart';
+import 'package:carzen_flutter/widgets/page_container.dart';
+import 'package:carzen_flutter/widgets/paged_controller.dart';
+import 'package:carzen_flutter/widgets/paged_list_view.dart';
 import 'package:carzen_flutter/widgets/state_views.dart';
 import 'package:flutter/material.dart';
 
@@ -17,70 +21,33 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
-  static const int _pageSize = 30;
-
   final _service = EngagementService();
-  final List<NotificationRecord> _items = [];
-  int _page = 1;
-  int _totalPages = 1;
-  bool _loading = true;
-  bool _loadingMore = false;
-  Object? _error;
+  final _session = SessionController.instance;
+  late final PagedController<NotificationRecord> _paged;
 
   @override
   void initState() {
     super.initState();
-    _load(reset: true);
+    _paged = PagedController<NotificationRecord>(
+      limit: 15,
+      fetch: (page, limit) => _service.listNotifications(page: page, limit: limit),
+    )..load();
   }
 
-  Future<void> _load({bool reset = false}) async {
-    setState(() {
-      if (reset) {
-        _loading = true;
-        _page = 1;
-      } else {
-        _loadingMore = true;
-      }
-      _error = null;
-    });
-    try {
-      final result = await _service.listNotifications(page: _page, limit: _pageSize);
-      if (!mounted) return;
-      setState(() {
-        if (reset) _items.clear();
-        _items.addAll(result.data);
-        _totalPages = result.pagination.totalPages;
-        _loading = false;
-        _loadingMore = false;
-      });
-    } on ApiException catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = e;
-        _loading = false;
-        _loadingMore = false;
-        if (!reset) _page--;
-      });
-    }
-  }
-
-  Future<void> _loadMore() async {
-    if (_loadingMore || _page >= _totalPages) return;
-    _page++;
-    await _load();
-  }
-
-  void _snack(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  @override
+  void dispose() {
+    _paged.dispose();
+    super.dispose();
   }
 
   Future<void> _markAllRead() async {
     try {
       await _service.markAllRead();
-      await _load(reset: true);
+      if (!mounted) return;
+      showAppSnack(context, 'All notifications marked as read.');
+      await _paged.refresh();
     } on ApiException catch (e) {
-      _snack(e.message);
+      if (mounted) showAppSnack(context, e.message, error: true);
     }
   }
 
@@ -88,9 +55,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     try {
       await _service.deleteNotification(item.id);
       if (!mounted) return;
-      setState(() => _items.removeWhere((n) => n.id == item.id));
+      await _paged.refresh();
     } on ApiException catch (e) {
-      _snack(e.message);
+      if (mounted) showAppSnack(context, e.message, error: true);
     }
   }
 
@@ -105,6 +72,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return id == null ? null : AppRoutes.inquiry(id);
       case 'car':
         return n.type == 'admin' ? AppRoutes.adminCars : AppRoutes.sell;
+      case 'service_request':
+        if (_session.isAdmin) return AppRoutes.adminServiceRequests;
+        return id == null ? AppRoutes.serviceRequests : AppRoutes.serviceRequest(id);
     }
     return null;
   }
@@ -115,20 +85,21 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         final updated = await _service.markRead(item.id);
         if (mounted) {
           setState(() {
-            final index = _items.indexWhere((n) => n.id == item.id);
-            if (index >= 0) _items[index] = updated;
+            final index = _paged.items.indexWhere((n) => n.id == item.id);
+            if (index >= 0) _paged.items[index] = updated;
           });
         }
       } on ApiException catch (e) {
-        _snack(e.message);
+        if (mounted) showAppSnack(context, e.message, error: true);
       }
     }
     final route = _routeFor(item);
     if (route != null && mounted) Navigator.of(context).pushNamed(route);
   }
 
-  IconData _iconFor(String? type) {
-    switch (type) {
+  IconData _iconFor(NotificationRecord n) {
+    if (n.referenceType == 'service_request') return Icons.build_circle_outlined;
+    switch (n.type) {
       case 'order':
         return Icons.receipt_long_outlined;
       case 'payment':
@@ -148,73 +119,43 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final hasUnread = _items.any((n) => !n.isRead);
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: const CarZenNavBar(current: NavSection.notifications, title: 'Notifications'),
-      body: SafeArea(child: _buildBody(hasUnread)),
-    );
-  }
-
-  Widget _buildBody(bool hasUnread) {
-    if (_loading) return const LoadingView(label: 'Loading notifications...');
-    if (_error != null && _items.isEmpty) {
-      return ApiErrorView(error: _error!, onRetry: () => _load(reset: true), fallback: 'Could not load notifications.');
-    }
-    if (_items.isEmpty) {
-      return const EmptyStateView(
-        icon: Icons.notifications_none_rounded,
-        title: 'Nothing new',
-        message: 'Order updates, replies from sellers and price changes on saved cars appear here.',
-      );
-    }
-    return RefreshIndicator(
-      onRefresh: () => _load(reset: true),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 820),
-          child: ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-            children: [
-              if (hasUnread)
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton.icon(
+      bottomNavigationBar: const CarZenBottomBar(current: NavSection.notifications),
+      body: SafeArea(
+        bottom: false,
+        child: PagedListView<NotificationRecord>(
+          controller: _paged,
+          maxWidth: 860,
+          itemLabel: 'notifications',
+          skeletonHeight: 84,
+          header: AnimatedBuilder(
+            animation: _paged,
+            builder: (context, _) => PageHeader(
+              title: 'Notifications',
+              subtitle: 'Updates on your orders, messages and service requests.',
+              icon: Icons.notifications_rounded,
+              actions: [
+                if (_paged.items.any((n) => !n.isRead))
+                  OutlinedButton.icon(
                     onPressed: _markAllRead,
                     icon: const Icon(Icons.done_all_rounded, size: 18),
                     label: const Text('Mark all as read'),
                   ),
-                ),
-              for (final item in _items) ...[
-                _NotificationTile(
-                  item: item,
-                  icon: _iconFor(item.type),
-                  onTap: () => _open(item),
-                  onDelete: () => _delete(item),
-                ),
-                const SizedBox(height: 8),
               ],
-              if (_page < _totalPages)
-                Center(
-                  child: _loadingMore
-                      ? const Padding(
-                          padding: EdgeInsets.all(12),
-                          child: CircularProgressIndicator(color: AppColors.secondary, strokeWidth: 2.4),
-                        )
-                      : OutlinedButton(onPressed: _loadMore, child: const Text('Load older notifications')),
-                ),
-              if (_error != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Center(
-                    child: Text(
-                      _error is ApiException ? (_error as ApiException).message : 'Could not load more.',
-                      style: const TextStyle(color: AppColors.favorite),
-                    ),
-                  ),
-                ),
-            ],
+            ),
+          ),
+          empty: const EmptyStateView(
+            icon: Icons.notifications_none_rounded,
+            title: 'Nothing new',
+            message: 'Order updates, replies from sellers and service request updates appear here.',
+          ),
+          errorFallback: 'Could not load notifications.',
+          itemBuilder: (context, item) => _NotificationTile(
+            item: item,
+            icon: _iconFor(item),
+            onTap: () => _open(item),
+            onDelete: () => _delete(item),
           ),
         ),
       ),
@@ -234,13 +175,13 @@ class _NotificationTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(AppRadii.lg),
       child: Container(
         padding: const EdgeInsets.fromLTRB(14, 12, 4, 12),
         decoration: BoxDecoration(
-          color: item.isRead ? AppColors.surface : const Color(0xFFFFF7E8),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: item.isRead ? AppColors.divider : AppColors.secondary.withValues(alpha: 0.5)),
+          color: item.isRead ? AppColors.surface : AppColors.cyanTint,
+          borderRadius: BorderRadius.circular(AppRadii.lg),
+          border: Border.all(color: item.isRead ? AppColors.divider : AppColors.secondary.withValues(alpha: 0.45)),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,

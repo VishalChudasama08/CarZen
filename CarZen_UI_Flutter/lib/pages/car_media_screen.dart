@@ -52,7 +52,7 @@ class _CarMediaScreenState extends State<CarMediaScreen> {
       _refresh();
     } on ApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      showAppSnack(context, e.message, error: true);
     } finally {
       if (mounted) setState(() => _uploading = false);
     }
@@ -64,7 +64,7 @@ class _CarMediaScreenState extends State<CarMediaScreen> {
       _refresh();
     } on ApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      showAppSnack(context, e.message, error: true);
     }
   }
 
@@ -74,7 +74,7 @@ class _CarMediaScreenState extends State<CarMediaScreen> {
       _refresh();
     } on ApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      showAppSnack(context, e.message, error: true);
     }
   }
 
@@ -84,8 +84,6 @@ class _CarMediaScreenState extends State<CarMediaScreen> {
       backgroundColor: AppColors.background,
       appBar: const CarZenNavBar(current: NavSection.sell, title: 'Photos & Media'),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppColors.secondary,
-        foregroundColor: AppColors.primary,
         onPressed: _uploading ? null : _handleUpload,
         icon: _uploading
             ? const SizedBox(

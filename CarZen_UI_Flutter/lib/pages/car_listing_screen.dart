@@ -97,7 +97,7 @@ class _CarListingScreenState extends State<CarListingScreen> {
       }
       if (!mounted) return;
       await _load();
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Listing saved.')));
+      showAppSnack(context, 'Listing saved.');
     } on ApiException catch (e) {
       setState(() => _errorMessage = e.message);
     } finally {
@@ -117,7 +117,7 @@ class _CarListingScreenState extends State<CarListingScreen> {
       await _load();
     } on ApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      showAppSnack(context, e.message, error: true);
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -150,7 +150,7 @@ class _CarListingScreenState extends State<CarListingScreen> {
       });
     } on ApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      showAppSnack(context, e.message, error: true);
     }
   }
 
@@ -168,11 +168,11 @@ class _CarListingScreenState extends State<CarListingScreen> {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Listing'),
-        backgroundColor: AppColors.background,
         actions: [
           if (_listing != null)
             IconButton(
-              icon: const Icon(Icons.delete_outline_rounded, color: AppColors.favorite),
+              tooltip: 'Delete listing',
+              icon: const Icon(Icons.delete_outline_rounded),
               onPressed: _handleDelete,
             ),
         ],

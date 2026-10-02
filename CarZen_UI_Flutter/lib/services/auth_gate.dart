@@ -1,4 +1,5 @@
 import 'package:carzen_flutter/models/user_response.dart';
+import 'package:carzen_flutter/widgets/state_views.dart';
 import 'package:carzen_flutter/pages/login_page.dart';
 import 'package:carzen_flutter/services/auth_exception.dart';
 import 'package:carzen_flutter/services/auth_service.dart';
@@ -21,7 +22,7 @@ class AuthGate {
       user = await auth.validateToken();
     } on AuthException catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+        showAppSnack(context, e.message, error: true);
       }
       return false;
     }

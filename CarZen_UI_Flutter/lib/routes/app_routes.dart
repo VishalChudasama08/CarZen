@@ -19,12 +19,26 @@ class AppRoutes {
   static const String adminCars = '/admin/cars';
   static const String adminOrders = '/admin/orders';
   static const String adminUsers = '/admin/users';
+  static const String adminServices = '/admin/services';
+  static const String adminServiceRequests = '/admin/service-requests';
+  static const String serviceBook = '/services/book';
+  static const String serviceRequests = '/services/requests';
+  static const String serviceHistory = '/services/history';
 
   static String carDetails(int listingId) => '/cars/$listingId';
 
   static String inquiry(int inquiryId) => '/inquiries/$inquiryId';
 
   static String adminUser(int userId) => '/admin/users/$userId';
+
+  static String serviceRequest(int requestId) => '/services/requests/$requestId';
+
+  /// `/services/book?ids=1,2` — the service ids to pre-select in the booking form.
+  static String bookServices(Iterable<int> serviceIds) {
+    final ids = serviceIds.toList();
+    if (ids.isEmpty) return serviceBook;
+    return Uri(path: serviceBook, queryParameters: {'ids': ids.join(',')}).toString();
+  }
 
   /// `/cars?brandId=3&fuelType=diesel...` — only non-null filters are added.
   static String browseWith({

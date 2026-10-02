@@ -1,4 +1,5 @@
 import 'package:carzen_flutter/widgets/carzen_nav_bar.dart';
+import 'package:carzen_flutter/widgets/state_views.dart';
 import 'package:carzen_flutter/widgets/content_width.dart';
 import 'package:flutter/material.dart';
 import 'package:carzen_flutter/services/api_exception.dart';
@@ -41,7 +42,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
         newPassword: _newController.text,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password updated.')));
+      showAppSnack(context, 'Password updated.');
       Navigator.of(context).pop();
     } on ApiException catch (e) {
       setState(() => _errorMessage = e.message);
