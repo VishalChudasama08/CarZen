@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:carzen_flutter/config/api_config.dart';
 import 'package:carzen_flutter/models/car_models.dart';
 import 'package:carzen_flutter/models/enums.dart';
@@ -517,7 +519,8 @@ class _GalleryState extends State<_Gallery> {
 
   @override
   Widget build(BuildContext context) {
-    final media = widget.media;
+    // Primary photo first, then the seller's order (the API does not sort).
+    final media = widget.media.inDisplayOrder;
     if (media.isEmpty) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(AppRadii.lg),
@@ -649,21 +652,26 @@ class _Slide extends StatelessWidget {
         ),
       );
     }
-    return Image.network(
-      media.absoluteUrl(ApiConfig.baseUrl),
-      fit: BoxFit.cover,
-      loadingBuilder: (context, child, progress) => progress == null
-          ? child
-          : Container(
-              color: AppColors.divider,
-              alignment: Alignment.center,
-              child: const CircularProgressIndicator(color: AppColors.secondary, strokeWidth: 2.4),
-            ),
-      errorBuilder: (_, __, ___) => Container(
-        color: AppColors.divider,
-        alignment: Alignment.center,
-        child: const Icon(Icons.broken_image_outlined, size: 40, color: AppColors.textSecondary),
-      ),
+    final url = media.absoluteUrl(ApiConfig.baseUrl);
+    // The demo photos have different shapes (wide shots, tall studio shots).
+    // `contain` shows the whole car instead of cropping it; a blurred copy of
+    // the same photo fills the bars so the gallery never shows empty bands.
+    // Both layers use the same size, so the picture is downloaded only once.
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        ImageFiltered(
+          imageFilter: ui.ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+          child: Image.network(
+            url,
+            fit: BoxFit.cover,
+            cacheWidth: 1280,
+            errorBuilder: (_, __, ___) => const ColoredBox(color: AppColors.surfaceMuted),
+          ),
+        ),
+        ColoredBox(color: Colors.black.withValues(alpha: 0.10)),
+        NetworkPhoto(url: url, fit: BoxFit.contain, cacheWidth: 1280),
+      ],
     );
   }
 }
@@ -680,13 +688,7 @@ class _Thumb extends StatelessWidget {
         child: Icon(media.mediaType == MediaType.video ? Icons.videocam_outlined : Icons.description_outlined),
       );
     }
-    final url = (media.thumbnailUrl != null && media.thumbnailUrl!.isNotEmpty) ? media.thumbnailUrl! : media.mediaUrl;
-    final absolute = url.startsWith('http') ? url : '${ApiConfig.baseUrl}$url';
-    return Image.network(
-      absolute,
-      fit: BoxFit.cover,
-      errorBuilder: (_, __, ___) => Container(color: AppColors.divider),
-    );
+    return NetworkPhoto(url: media.thumbnailAbsoluteUrl(ApiConfig.baseUrl), cacheWidth: 240);
   }
 }
 

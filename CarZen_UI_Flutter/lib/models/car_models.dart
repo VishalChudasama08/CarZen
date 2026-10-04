@@ -36,20 +36,54 @@ class CarMedia {
 
   /// Full URL for display — media_url from the backend is a relative
   /// `/uploads/...` path served as static files by FastAPI.
-  String absoluteUrl(String baseUrl) => mediaUrl.startsWith('http') ? mediaUrl : '$baseUrl$mediaUrl';
+  String absoluteUrl(String baseUrl) => resolveMediaUrl(baseUrl, mediaUrl);
+
+  /// Small version for strips and grids: the backend thumbnail when it has
+  /// one, otherwise the full image.
+  String thumbnailAbsoluteUrl(String baseUrl) {
+    final thumb = thumbnailUrl;
+    return resolveMediaUrl(baseUrl, (thumb != null && thumb.trim().isNotEmpty) ? thumb : mediaUrl);
+  }
+}
+
+/// Turns a backend media path into a loadable URL.
+///
+/// * `https://...` / `http://...` are used as they are (external photos)
+/// * `/uploads/cars/201_toyota_fortuner_2021_front.jpg` and `uploads/cars/...`
+///   are joined to [baseUrl] with exactly one `/` between them, so a base URL
+///   configured with or without a trailing slash both work
+/// * spaces are percent-encoded so file names with spaces still load
+String resolveMediaUrl(String baseUrl, String path) {
+  final value = path.trim();
+  final lower = value.toLowerCase();
+  if (lower.startsWith('http://') || lower.startsWith('https://')) return value;
+  final base = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
+  final relative = value.startsWith('/') ? value : '/$value';
+  return '$base${relative.replaceAll(' ', '%20')}';
 }
 
 extension CarMediaListX on List<CarMedia> {
+  /// The order photos are shown in: the primary photo first, then by the
+  /// seller's `sort_order`, then by id. The backend does not guarantee any
+  /// order, so every screen sorts with this instead of trusting the response.
+  List<CarMedia> get inDisplayOrder {
+    final list = [...this];
+    list.sort((a, b) {
+      if (a.isPrimary != b.isPrimary) return a.isPrimary ? -1 : 1;
+      final bySort = a.sortOrder.compareTo(b.sortOrder);
+      return bySort != 0 ? bySort : a.id.compareTo(b.id);
+    });
+    return list;
+  }
+
   /// Best image for a card/thumbnail: the primary image, otherwise the first
-  /// image. Videos and documents are never used (they can't be shown by
-  /// `Image.network`).
+  /// image in display order. Videos and documents are never used (they can't
+  /// be shown by `Image.network`).
   CarMedia? get cover {
-    final images = where((m) => m.mediaType == MediaType.image).toList();
-    if (images.isEmpty) return null;
-    for (final image in images) {
-      if (image.isPrimary) return image;
+    for (final item in inDisplayOrder) {
+      if (item.mediaType == MediaType.image) return item;
     }
-    return images.first;
+    return null;
   }
 }
 

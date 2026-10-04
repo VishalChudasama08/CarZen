@@ -147,7 +147,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
             child: SizedBox(
               width: 104,
               height: 80,
-              child: NetworkPhoto(url: car.media.cover?.absoluteUrl(ApiConfig.baseUrl)),
+              child: NetworkPhoto(url: car.media.cover?.absoluteUrl(ApiConfig.baseUrl), cacheWidth: 400),
             ),
           ),
           const SizedBox(width: 14),

@@ -68,7 +68,11 @@ class _ListingCardState extends State<ListingCard> {
                   children: [
                     AspectRatio(
                       aspectRatio: 4 / 3,
-                      child: NetworkPhoto(url: imageUrl, fallbackLabel: imageUrl == null ? 'Photos coming soon' : null),
+                      child: NetworkPhoto(
+                        url: imageUrl,
+                        cacheWidth: 700,
+                        fallbackLabel: imageUrl == null ? 'Photos coming soon' : null,
+                      ),
                     ),
                     Positioned(
                       top: 10,

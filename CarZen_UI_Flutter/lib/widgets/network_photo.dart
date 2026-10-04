@@ -10,12 +10,19 @@ class NetworkPhoto extends StatelessWidget {
   final IconData fallbackIcon;
   final String? fallbackLabel;
 
+  /// Decode the picture at about this width (in logical pixels x device
+  /// ratio is handled by Flutter) instead of its full size. The demo photos
+  /// are up to 1280 px wide; a card only needs ~700, which keeps long lists
+  /// light on memory.
+  final int? cacheWidth;
+
   const NetworkPhoto({
     super.key,
     required this.url,
     this.fit = BoxFit.cover,
     this.fallbackIcon = Icons.directions_car_filled_rounded,
     this.fallbackLabel,
+    this.cacheWidth,
   });
 
   Widget _fallback() => PhotoFallback(icon: fallbackIcon, label: fallbackLabel);
@@ -29,6 +36,8 @@ class NetworkPhoto extends StatelessWidget {
       fit: fit,
       width: double.infinity,
       height: double.infinity,
+      cacheWidth: cacheWidth,
+      gaplessPlayback: true,
       loadingBuilder: (context, child, progress) {
         if (progress == null) return child;
         return const SkeletonBox(radius: 0);

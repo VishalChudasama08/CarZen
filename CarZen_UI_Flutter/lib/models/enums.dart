@@ -17,7 +17,7 @@ enum CarApprovalStatus { draft, pendingApproval, approved, rejected, published, 
 
 enum MediaType { image, video, document }
 
-enum BodyType { hatchback, sedan, suv, muv, coupe, convertible, pickup, minivan, other }
+enum BodyType { hatchback, sedan, suv, muv, mpv, coupe, convertible, pickup, minivan, other }
 
 enum ListingType { sale, resale }
 
@@ -98,7 +98,7 @@ extension MediaTypeX on MediaType {
 
 extension BodyTypeX on BodyType {
   String get apiValue => name;
-  String get label => (this == BodyType.suv || this == BodyType.muv)
+  String get label => (this == BodyType.suv || this == BodyType.muv || this == BodyType.mpv)
       ? name.toUpperCase()
       : name[0].toUpperCase() + name.substring(1);
   static BodyType fromApi(String value) =>

@@ -8,6 +8,7 @@ import 'package:carzen_flutter/models/enums.dart';
 import 'package:carzen_flutter/services/api_exception.dart';
 import 'package:carzen_flutter/services/car_service.dart';
 import 'package:carzen_flutter/theme/app_theme.dart';
+import 'package:carzen_flutter/widgets/network_photo.dart';
 import 'package:carzen_flutter/widgets/state_views.dart';
 
 /// Manages one car's media — `GET/POST /v1/cars/{id}/media`,
@@ -153,11 +154,7 @@ class _MediaTile extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          Image.network(
-            media.absoluteUrl(ApiConfig.baseUrl),
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => Container(color: AppColors.divider, child: const Icon(Icons.broken_image_outlined)),
-          ),
+          NetworkPhoto(url: media.thumbnailAbsoluteUrl(ApiConfig.baseUrl), cacheWidth: 600),
           if (media.isPrimary)
             Positioned(
               left: 8,
@@ -165,7 +162,7 @@ class _MediaTile extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(color: AppColors.secondary, borderRadius: BorderRadius.circular(8)),
-                child: const Text('Primary', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700)),
+                child: const Text('Primary', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.white)),
               ),
             ),
           Positioned(
