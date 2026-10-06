@@ -1,0 +1,74 @@
+car_id,file (backend/uploads/cars),source file in dataset
+1,1_maruti_swift_2021_front.jpg,dataset/Maruti Suzuki Swift/Image_2.jpg
+1,1_maruti_swift_2021_rear.jpg,dataset/Maruti Suzuki Swift/Image_13.jpg
+2,2_hyundai_creta_2020_front.jpg,dataset/Hyundai Creta/Image_24.jpg
+2,2_hyundai_creta_2020_front_wide.jpg,dataset/Hyundai Creta/Image_15.jpg
+2,2_hyundai_creta_2020_rear.jpg,dataset/Hyundai Creta/Image_29.jpg
+3,3_tata_nexon_2022_front.jpg,dataset/Tata Nexon/Image_29.jpg
+3,3_tata_nexon_2022_front_side.jpg,dataset/Tata Nexon/Image_27.jpg
+4,4_honda_city_2019_front.jpg,dataset/Honda City/Image_27.jpg
+4,4_honda_city_2019_rear.jpg,dataset/Honda City/Image_25.jpg
+4,4_honda_city_2019_side.jpg,dataset/Honda City/Image_22.jpg
+5,5_maruti_swift_2023_front.jpg,dataset/Maruti Suzuki Swift/Image_23.jpg
+5,5_maruti_swift_2023_front_side.jpg,dataset/Maruti Suzuki Swift/Image_28.jpg
+6,6_tata_nexon_ev_2022_front.jpg,dataset/Tata Nexon Ev/Image_19.jpg
+6,6_tata_nexon_ev_2022_rear.jpg,dataset/Tata Nexon Ev/Image_30.jpg
+6,6_tata_nexon_ev_2022_side.jpg,dataset/Tata Nexon Ev/Image_24.jpg
+7,7_hyundai_creta_2018_front.jpg,dataset/Hyundai Creta/Image_9.jpg
+7,7_hyundai_creta_2018_front_side.jpg,dataset/Hyundai Creta/Image_12.jpg
+7,7_hyundai_creta_2018_rear.jpg,dataset/Hyundai Creta/Image_11.jpg
+8,8_maruti_swift_2015_front.jpg,dataset/Maruti Suzuki Swift/Image_10.jpg
+8,8_maruti_swift_2015_front_close.jpg,dataset/Maruti Suzuki Swift/Image_7.jpg
+8,8_maruti_swift_2015_front_side.jpg,dataset/Maruti Suzuki Swift/Image_12.jpg
+9,9_honda_city_2020_front.jpg,dataset/Honda City/Image_2.jpg
+9,9_honda_city_2020_side.jpg,dataset/Honda City/Image_24.jpg
+10,10_maruti_swift_2018_front.jpg,dataset/Maruti Suzuki Swift/Image_15.jpg
+10,10_maruti_swift_2018_front_side.jpg,dataset/Maruti Suzuki Swift/Image_25.jpg
+10,10_maruti_swift_2018_rear.jpg,dataset/Maruti Suzuki Swift/Image_20.jpg
+11,11_toyota_fortuner_2021_front.jpg,dataset/Toyota Fortuner/Image_1.jpg
+11,11_toyota_fortuner_2021_front_wide.jpg,dataset/Toyota Fortuner/Image_11.jpg
+11,11_toyota_fortuner_2021_rear.jpg,dataset/Toyota Fortuner/Image_2.jpg
+12,12_maruti_swift_2019_front.jpg,dataset/Maruti Suzuki Swift/Image_14.jpg
+12,12_maruti_swift_2019_rear.jpg,dataset/Maruti Suzuki Swift/Image_24.jpg
+13,13_hyundai_creta_2018_front.jpg,dataset/Hyundai Creta/Image_5.jpg
+13,13_hyundai_creta_2018_rear.jpg,dataset/Hyundai Creta/Image_4.jpg
+13,13_hyundai_creta_2018_side.jpg,dataset/Hyundai Creta/Image_13.jpg
+14,14_tata_nexon_2018_front.jpg,dataset/Tata Nexon/Image_2.jpg
+14,14_tata_nexon_2018_rear.jpg,dataset/Tata Nexon/Image_9.jpg
+14,14_tata_nexon_2018_side.jpg,dataset/Tata Nexon/Image_1.jpg
+15,15_honda_city_2018_front.jpg,dataset/Honda City/Image_5.jpg
+15,15_honda_city_2018_rear.jpg,dataset/Honda City/Image_10.jpg
+16,16_mahindra_thar_2021_front.jpg,dataset/Mahindra Thar/Image_5.jpg
+16,16_mahindra_thar_2021_front_side.jpg,dataset/Mahindra Thar/Image_4.jpg
+16,16_mahindra_thar_2021_rear.jpg,dataset/Mahindra Thar/Image_10.jpg
+17,17_toyota_innova_crysta_2018_front.jpg,dataset/Toyota Innova Crysta/Image_3.jpg
+17,17_toyota_innova_crysta_2018_front_close.jpg,dataset/Toyota Innova Crysta/Image_10.jpg
+17,17_toyota_innova_crysta_2018_side.jpg,dataset/Toyota Innova Crysta/Image_1.jpg
+18,18_kia_seltos_2020_front.jpg,dataset/Kia Seltos/Image_13.jpg
+18,18_kia_seltos_2020_front_side.jpg,dataset/Kia Seltos/Image_9.jpg
+18,18_kia_seltos_2020_rear.jpg,dataset/Kia Seltos/Image_4.jpg
+19,19_hyundai_verna_2018_front.jpg,dataset/Hyundai Verna/Image_1.jpg
+19,19_hyundai_verna_2018_rear.jpg,dataset/Hyundai Verna/Image_2.jpg
+20,20_maruti_baleno_2018_front.jpg,dataset/Maruti Suzuki Baleno/Image_2.jpg
+20,20_maruti_baleno_2018_front_side.jpg,dataset/Maruti Suzuki Baleno/Image_7.jpg
+20,20_maruti_baleno_2018_rear.jpg,dataset/Maruti Suzuki Baleno/Image_8.jpg
+21,21_mahindra_xuv500_2015_front.jpg,dataset/Mahindra Xuv500/Image_2.jpg
+21,21_mahindra_xuv500_2015_front_side.jpg,dataset/Mahindra Xuv500/Image_7.jpg
+21,21_mahindra_xuv500_2015_side.jpg,dataset/Mahindra Xuv500/Image_9.jpg
+22,22_tata_nexon_ev_2021_front.jpg,dataset/Tata Nexon Ev/Image_3.jpg
+22,22_tata_nexon_ev_2021_front_close.jpg,dataset/Tata Nexon Ev/Image_5.jpg
+22,22_tata_nexon_ev_2021_rear.jpg,dataset/Tata Nexon Ev/Image_7.jpg
+23,23_ford_endeavour_2019_front.jpg,dataset/Ford Endeavour/Image_1.jpg
+23,23_ford_endeavour_2019_front_wide.jpg,dataset/Ford Endeavour/Image_2.jpg
+24,24_bmw_3_series_2017_front.jpg,dataset/Bmw 3-Series/Image_4.jpg
+24,24_bmw_3_series_2017_front_side.jpg,dataset/Bmw 3-Series/Image_1.jpg
+24,24_bmw_3_series_2017_rear.jpg,dataset/Bmw 3-Series/Image_9.jpg
+25,25_maruti_dzire_2018_front.jpg,dataset/Maruti Suzuki Dzire/Image_1.jpg
+25,25_maruti_dzire_2018_front_wide.jpg,dataset/Maruti Suzuki Dzire/Image_2.jpg
+25,25_maruti_dzire_2018_side.jpg,dataset/Maruti Suzuki Dzire/Image_11.jpg
+26,26_hyundai_elite_i20_2017_front.jpg,dataset/Hyundai Elite I20/Image_4.jpg
+26,26_hyundai_elite_i20_2017_front_side.jpg,dataset/Hyundai Elite I20/Image_10.jpg
+26,26_hyundai_elite_i20_2017_side.jpg,dataset/Hyundai Elite I20/Image_5.jpg
+27,27_mahindra_scorpio_2017_front.jpg,dataset/Mahindra Scorpio/Image_2.jpg
+27,27_mahindra_scorpio_2017_rear.jpg,dataset/Mahindra Scorpio/Image_14.jpg
+27,27_mahindra_scorpio_2017_side.jpg,dataset/Mahindra Scorpio/Image_3.jpg
