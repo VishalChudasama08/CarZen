@@ -1,0 +1,27 @@
+
+For run on phone =>
+
+in terminal at CarZen_UI_V4>
+
+flutter pub get
+
+flutter devices
+
+adb reverse tcp:8085 tcp:8085
+
+flutter run -d RMX2001
+OR
+flutter run -d VG45XKGMSKXSZTDI --dart-define=API_BASE_URL=http://127.0.0.1:8085
+ 
+
+CarZen V4 changese prompt:
+
+as first page like index.html here showing Home page, now any pre-loged in showing. only login/register showing.
+
+admin login then lending on direct dashboand. not in home page.
+
+on phone size (width 320px to 300px)
+
+login and registration page is okay,
+
+
