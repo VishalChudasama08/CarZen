@@ -1,7 +1,18 @@
 from enum import Enum
 
 
-class BodyType(str, Enum):
+class CaseInsensitiveEnum(str, Enum):
+    @classmethod
+    def _missing_(cls, value):
+        if isinstance(value, str):
+            val = value.lower()
+            for member in cls:
+                if member.value.lower() == val or member.name.lower() == val:
+                    return member
+        return None
+
+
+class BodyType(CaseInsensitiveEnum):
     HATCHBACK = "hatchback"
     SEDAN = "sedan"
     SUV = "suv"
@@ -14,7 +25,7 @@ class BodyType(str, Enum):
     OTHER = "other"
 
 
-class FuelType(str, Enum):
+class FuelType(CaseInsensitiveEnum):
     PETROL = "petrol"
     DIESEL = "diesel"
     CNG = "cng"
@@ -22,7 +33,7 @@ class FuelType(str, Enum):
     HYBRID = "hybrid"
 
 
-class TransmissionType(str, Enum):
+class TransmissionType(CaseInsensitiveEnum):
     MANUAL = "manual"
     AUTOMATIC = "automatic"
     AMT = "amt"
@@ -30,14 +41,14 @@ class TransmissionType(str, Enum):
     DCT = "dct"
 
 
-class OwnershipType(str, Enum):
+class OwnershipType(CaseInsensitiveEnum):
     FIRST_OWNER = "first_owner"
     SECOND_OWNER = "second_owner"
     THIRD_OWNER = "third_owner"
     FOURTH_OR_MORE = "fourth_or_more"
 
 
-class CarCondition(str, Enum):
+class CarCondition(CaseInsensitiveEnum):
     EXCELLENT = "excellent"
     GOOD = "good"
     FAIR = "fair"
@@ -45,8 +56,19 @@ class CarCondition(str, Enum):
     NEW  = "new"
     OLD = "oldCar"
 
+    @classmethod
+    def _missing_(cls, value):
+        if isinstance(value, str):
+            val = value.lower()
+            if val in ("old", "oldcar", "old_car"):
+                return cls.OLD
+            for member in cls:
+                if member.value.lower() == val or member.name.lower() == val:
+                    return member
+        return None
 
-class CarApprovalStatus(str, Enum):
+
+class CarApprovalStatus(CaseInsensitiveEnum):
     DRAFT = "draft"
     PENDING_APPROVAL = "pending_approval"
     APPROVED = "approved"
@@ -56,6 +78,6 @@ class CarApprovalStatus(str, Enum):
     INACTIVE = "inactive"
 
 
-class MediaType(str, Enum):
+class MediaType(CaseInsensitiveEnum):
     IMAGE = "image"
     VIDEO = "video"

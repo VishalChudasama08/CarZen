@@ -1,7 +1,18 @@
 from enum import Enum
 
 
-class ReportReason(str, Enum):
+class CaseInsensitiveEnum(str, Enum):
+    @classmethod
+    def _missing_(cls, value):
+        if isinstance(value, str):
+            val = value.lower()
+            for member in cls:
+                if member.value.lower() == val or member.name.lower() == val:
+                    return member
+        return None
+
+
+class ReportReason(CaseInsensitiveEnum):
     FAKE_LISTING = "fake_listing"
     WRONG_INFORMATION = "wrong_information"
     FRAUD = "fraud"
@@ -11,7 +22,7 @@ class ReportReason(str, Enum):
     OTHER = "other"
 
 
-class ReportStatus(str, Enum):
+class ReportStatus(CaseInsensitiveEnum):
     PENDING = "pending"
     UNDER_REVIEW = "under_review"
     RESOLVED = "resolved"

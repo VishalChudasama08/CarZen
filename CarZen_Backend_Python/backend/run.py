@@ -1,5 +1,5 @@
 """
-Main Entry point for the SmartCarX App or Api 
+Main Entry point for the CarZen App or Api 
 Run the file to start the FastAPI server
 
 usage:
@@ -26,11 +26,14 @@ if __name__ == "__main__":
     Base.metadata.create_all(bind=engine)
     print("Database tables verified.")
 
+    import os
+    port = int(os.getenv("PORT", "8085"))
+    print(f"Starting CarZen backend server on http://0.0.0.0:{port}...")
     uvicorn.run(
         "run:app",
-        host="127.0.0.1",
-        port=8000,
-        reload=True,
+        host="0.0.0.0",
+        port=port,
+        reload=False,
         log_level="info",
         app_dir=str(backend_dir)
     )

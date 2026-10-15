@@ -42,8 +42,10 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="CarZen", lifespan=lifespan)
 
-Path("uploads").mkdir(exist_ok=True)
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+# Resolve uploads directory directly to backend/uploads
+UPLOAD_DIR = (Path(__file__).resolve().parent.parent / "uploads").resolve()
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 
 CORS_ORIGINS = [
     origin.strip()
