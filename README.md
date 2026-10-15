@@ -1,512 +1,349 @@
-# 🚗 CarZen
+# 🚗 CarZen - Complete Automotive Marketplace & Workshop Platform
 
-**CarZen** is an intelligent automobile marketplace and vehicle management platform that connects **car buyers, sellers, and resellers**. The project is developed using **Python, FastAPI, MySQL, Flutter, and Machine Learning** to simplify the car-buying, selling, and ownership experience.
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.141.1-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com)
+[![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?style=flat-square&logo=python)](https://www.python.org/)
+[![Flutter](https://img.shields.io/badge/Flutter-3.47%2B-02569B?style=flat-square&logo=flutter)](https://flutter.dev/)
+[![Dart](https://img.shields.io/badge/Dart-3.13%2B-0175C2?style=flat-square&logo=dart)](https://dart.dev/)
+[![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0.52-D71F00?style=flat-square&logo=sqlalchemy)](https://www.sqlalchemy.org/)
+[![MySQL](https://img.shields.io/badge/MySQL-8.0%2B-4479A1?style=flat-square&logo=mysql)](https://www.mysql.com/)
+[![Razorpay](https://img.shields.io/badge/Payments-Razorpay-0C2340?style=flat-square&logo=razorpay)](https://razorpay.com/)
+[![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
 
----
+**CarZen** is a modern, enterprise-ready full-stack automotive platform designed to connect **car buyers, sellers, workshop service technicians, and administrators**. It unifies peer-to-peer vehicle commerce, an intelligent vehicle catalog and inventory manager, a full-lifecycle digital workshop service & booking system, and a tamper-proof Razorpay payment gateway into a seamless digital ecosystem.
 
-## 📌 Overview
-
-CarZen provides a digital platform where users can explore available vehicles, view detailed vehicle information, manage listings, purchase cars, and manage their vehicle-related activities through a modern and responsive interface.
-
-The platform follows a client-server architecture:
-
-- **Flutter** — Cross-platform user interface
-- **FastAPI** — Backend REST API
-- **MySQL** — Relational database
-- **Python** — Backend and Machine Learning development
-- **Machine Learning** — Intelligent automobile-related functionality
-
-The project is being developed as a full-stack academic project with a focus on creating a practical and scalable automobile marketplace.
+Built with a decoupled, high-performance architecture:
+- **Backend**: Asynchronous **FastAPI**, **SQLAlchemy 2.0 (ORM)**, and **MySQL 8.0** delivering 170+ production-tested REST endpoints.
+- **Frontend**: Cross-platform **Flutter** client ([CarZen_UI_Flutter](CarZen_UI_Flutter)) supporting Web, Android, iOS, and Desktop with responsive UI, live search filters, and integrated Razorpay Web Checkout.
 
 ---
 
-## ✨ Features
+## 📑 Quick Navigation & Documentation
 
-### 🏠 Home & Vehicle Discovery
-
-- Modern automobile marketplace homepage
-- Browse available vehicles
-- Search and filter vehicle listings
-- View vehicle categories and information
-- Responsive interface for different screen sizes
-
-### 🚘 Car Marketplace
-
-- Browse available cars
-- View complete vehicle details
-- Vehicle images and media
-- Pricing and vehicle information
-- Listing details and availability
-
-### 💰 Sell & Resell Cars
-
-- Create vehicle listings
-- Add vehicle information
-- Upload vehicle media
-- Manage vehicle listings
-- Support for selling and reselling vehicles
-
-### 👤 User Authentication
-
-- User registration
-- User login
-- Secure token-based authentication
-- Persistent login session
-- Profile management
-- Protected user operations
-
-### ❤️ Favorites
-
-- Add cars to favorites
-- Remove cars from favorites
-- View saved vehicles
-
-### 🛒 Orders
-
-- Purchase-related order management
-- View user orders
-- Order details and status
-- Admin order management
-
-### 👨‍💼 Administration
-
-- Admin authentication
-- User management
-- Order management
-- Administrative controls
-- Vehicle and listing management capabilities
-
-### 🔧 Vehicle Services
-
-The application is designed to support vehicle-related services and service management where corresponding backend functionality is available.
-
-### 🧰 Car Accessories
-
-The application structure supports automobile accessories functionality where corresponding backend functionality is available.
-
-### 🤖 Machine Learning
-
-Machine Learning is included as part of the CarZen project to provide intelligent automobile-related functionality.
+- 📖 **[Full REST API Documentation (172 Endpoints)](CarZen_Backend_Python/docs/API_DOCUMENTATION.md)** — Exhaustive endpoint reference with request/response schemas, parameter validations, and sample cURL commands.
+- 💳 **[Payment Integration & Testing Guide](CarZen_Backend_Python/docs/PAYMENT_INTEGRATION_AND_TESTING_GUIDE.md)** — Step-by-step verification manual for Razorpay online checkout, webhook handlers, and offline cash settlements.
+- ⚡ **Interactive Swagger UI**: [`http://localhost:8085/docs`](http://localhost:8085/docs) *(when backend server is running)*
+- 📚 **ReDoc Alternative Docs**: [`http://localhost:8085/redoc`](http://localhost:8085/redoc)
 
 ---
 
-## 🏗️ System Architecture
+## 🌟 Key Capabilities & Modules
 
-```text
-┌──────────────────────────────┐
-│          Flutter UI          │
-│                              │
-│  Home • Buy • Sell • Profile │
-│  Favorites • Orders • Admin  │
-└──────────────┬───────────────┘
-               │
-               │ REST API
-               ▼
-┌──────────────────────────────┐
-│        FastAPI Backend       │
-│                              │
-│ Authentication               │
-│ Users                        │
-│ Cars / Listings              │
-│ Favorites                    │
-│ Orders                       │
-│ Admin                        │
-│ ML Integration               │
-└──────────────┬───────────────┘
-               │
-               ▼
-┌──────────────────────────────┐
-│          MySQL DB            │
-│                              │
-│ Users                        │
-│ Cars                         │
-│ Listings                     │
-│ Orders                       │
-│ Favorites                    │
-│ Payments / Related Data      │
-└──────────────────────────────┘
+### 1. 🚗 Vehicle Catalog & Inventory Management
+- **Hierarchical Master Catalog**: Normalized Brands, Models, and Variants with detailed technical specifications (fuel type, transmission, horsepower, engine CC, seating capacity).
+- **Seller Inventory**: Register vehicles with VIN, registration numbers, odometer readings, and condition (`new`, `oldCar`, `excellent`, `good`, `poor`).
+- **High-Definition Gallery**: Upload multi-photo galleries, designate primary showcase images, and reorder assets.
+- **Admin Moderation & Lifecycle**: Full status state machine (`draft` → `pending_approval` → `approved` / `rejected` → `published` → `sold`).
+
+### 2. 🛒 Marketplace & Public Discovery
+- **Public Vehicle Listings**: Search and filter vehicles by keyword, price range, brand, fuel type, transmission, and body style.
+- **Detailed Showcase**: High-res gallery sliders, technical specifications, seller profile badges, and verified buyer reviews.
+- **Buyer Wishlist**: One-tap bookmarking to track favorite vehicles.
+- **Seller Publishing**: Instant publishing, pause, price adjustments, or delisting directly from the seller portal.
+
+### 3. 💬 Inquiries & Negotiation Engine
+- **Direct Offers & Inquiries**: Prospective buyers can submit purchase inquiries, customized price offers, and questions.
+- **Threaded Messaging**: Real-time conversation thread between buyer and seller per vehicle listing.
+- **Inquiry States**: Systematic lifecycle tracking through `PENDING`, `RESPONDED`, and `CLOSED`.
+
+### 4. 💳 Orders & Razorpay Financial Engine
+- **Dual Payment Modes**:
+  - **Online**: Integrated Razorpay payment orders with server-side HMAC SHA-256 signature verification.
+  - **Offline**: Cash on Handover / Delivery with seller or admin settlement confirmation.
+- **Automated State Synchronization**: Once payment succeeds, the Order marks as `PAID`, the Listing automatically marks as `SOLD`, and a financial ledger row is logged.
+- **Razorpay Web Checkout**: Native modal checkout inside Flutter Web via Razorpay JS SDK.
+- **Webhooks**: Resilient webhook listeners for asynchronous order updates.
+
+### 5. 🔧 Digital Workshop & Service Center
+- **Service Catalog**: Browse standard maintenance packages, brake overhauls, AC sanitization, and diagnostics with transparent pricing.
+- **Slot Booking**: Real-time calendar slot reservation preventing double-bookings.
+- **End-to-End Service Lifecycle**:
+  $$\text{PENDING} \longrightarrow \text{SCHEDULED} \longrightarrow \text{IN\_PROGRESS} \longrightarrow \text{COMPLETED}$$
+- **Digital Service Booklet**: Odometer readings, replaced parts, technician remarks, and itemized billing automatically bound to the car's permanent history.
+- **Online Service Payments**: Pay workshop bills directly through Razorpay before or upon vehicle collection.
+
+### 6. 🛡️ Comprehensive Admin & Governance Portal
+- **Platform Analytics**: High-level platform statistics for revenue, active users, listings volume, and workshop job metrics.
+- **Vehicle & Listing Moderation**: Single-click review, approval, or rejection (with recorded reason) of seller cars.
+- **Workshop Queue**: Dispatch jobs to technicians, update live service stages, and record completion details.
+- **User Governance**: Inspect accounts, assign roles (`USER` vs `ADMIN`), and manage account statuses (`ACTIVE`, `INACTIVE`, `BLOCKED`).
+
+---
+
+## 🏛️ System Architecture
+
+```mermaid
+graph TD
+    subgraph Clients["📱 Client Layer"]
+        FlutterWeb["Flutter Web Application (Port 8080)"]
+        FlutterMobile["Flutter Android / iOS"]
+        PaymentSim["Razorpay Payment Simulator (HTML/JS)"]
+    end
+
+    subgraph BackendGateway["⚙️ FastAPI Backend (Port 8085)"]
+        Router["API Gateway (/v1)"]
+        AuthMid["JWT Auth & Role-Based Access Control"]
+        
+        subgraph Services["Domain Modules"]
+            AuthSvc["Auth & Users"]
+            CatalogSvc["Catalog, Brands & Cars"]
+            MarketSvc["Marketplace Listings & Inquiries"]
+            OrderSvc["Orders & Razorpay Verification"]
+            ServiceSvc["Workshop & Service History"]
+            AdminSvc["Admin Moderation Suite"]
+        end
+    end
+
+    subgraph External["🌐 External Integrations"]
+        RazorpayAPI["Razorpay REST & Webhooks API"]
+        UploadStorage["Static Uploads Directory (/uploads)"]
+    end
+
+    subgraph Data["💾 Persistence Layer"]
+        MySQL[("MySQL 8.0 Database (carzen_db_v5_new)")]
+        Alembic["Alembic Migrations"]
+    end
+
+    Clients <-->|REST API / JSON| Router
+    Router --> AuthMid
+    AuthMid --> Services
+    OrderSvc <-->|HMAC Verification & Orders| RazorpayAPI
+    CatalogSvc --> UploadStorage
+    Services <-->|SQLAlchemy ORM 2.0| MySQL
+    Alembic --> MySQL
 ```
 
 ---
 
-## 🛠️ Technology Stack
+## 📂 Project Directory Structure
 
-| Technology | Purpose |
-|---|---|
-| **Flutter** | Frontend / Cross-platform UI |
-| **Dart** | Flutter application development |
-| **Python** | Backend and Machine Learning |
-| **FastAPI** | REST API backend |
-| **MySQL** | Database |
-| **Machine Learning** | Intelligent automobile features |
-| **Git** | Version control |
-| **GitHub** | Source code management |
-| **Swagger / OpenAPI** | API documentation and testing |
-
----
-
-## 📂 Project Structure
-
-```text
+```
 CarZen/
-│
-├── backend/
-│   ├── ...
-│   └── requirements.txt
-│
-├── CarZen_UI/
+├── CarZen_UI_Flutter/                    # Cross-platform Flutter Frontend
 │   ├── lib/
-│   │   ├── models/
-│   │   ├── pages/
-│   │   ├── services/
-│   │   ├── theme/
-│   │   ├── utils/
-│   │   └── widgets/
-│   │
-│   ├── assets/
-│   ├── pubspec.yaml
-│   └── ...
+│   │   ├── config/api_config.dart        # API gateway endpoints & environments
+│   │   ├── models/                       # Dart models (Car, Order, Service, User)
+│   │   ├── providers/                    # State management (Auth, Car, Order)
+│   │   ├── screens/                      # UI pages (Marketplace, Detail, Admin, Service)
+│   │   ├── services/                     # HTTP API client services & Razorpay JS bridge
+│   │   └── widgets/                      # Reusable UI components & cards
+│   ├── web/                              # Web host with Razorpay Checkout SDK
+│   ├── assets/                           # Application logos, branding, and images
+│   ├── pubspec.yaml                      # Flutter dependencies & assets config
+│   └── .gitignore                        # Flutter build & cache exclusions
 │
-├── docs/
-│   └── Database SQL file
+├── CarZen_Backend_Python/                # Backend Repository Folder
+│   ├── backend/                          # FastAPI Python Application
+│   │   ├── app/                          # Core, API routers, ORM models, Pydantic schemas
+│   │   │   ├── api/v1/                   # REST API route controllers
+│   │   │   │   ├── admin/                # Admin moderation, orders, services
+│   │   │   │   ├── auth/                 # JWT login, registration, token refresh
+│   │   │   │   ├── buyer/                # Buyer marketplace, inquiries, orders
+│   │   │   │   ├── car_management/       # Cars, brands, models, variants
+│   │   │   │   ├── order/                # Purchase orders & checkout
+│   │   │   │   ├── payment/              # Razorpay order generation & HMAC verify
+│   │   │   │   ├── services/             # Workshop catalog & appointment bookings
+│   │   │   │   └── users/                # Profiles & password management
+│   │   │   ├── core/                     # Security, JWT signing, RBAC dependencies
+│   │   │   ├── database/                 # SQLAlchemy connection pool & session handlers
+│   │   │   ├── models/                   # SQLAlchemy ORM models & database Enums
+│   │   │   ├── schemas/                  # Pydantic v2 validation & response models
+│   │   │   ├── services/                 # Business logic & repository services
+│   │   │   └── main.py                   # FastAPI application entry & CORS middleware
+│   │   ├── uploads/                      # Uploaded vehicle photos and media files
+│   │   ├── paymentCheck/                 # Standalone Razorpay test checkout page
+│   │   │   └── index.html                # Browser payment simulator
+│   │   ├── scripts/                      # Developer & maintenance utilities
+│   │   │   ├── build_docs.py             # Introspects FastAPI routes to update docs
+│   │   │   ├── live_chrome_test_suite.py # Automated Chrome CDP end-to-end smoke tester
+│   │   │   ├── migrate_car_management.py # Schema migration for car lifecycle columns
+│   │   │   └── seed_demo_listings.py     # Demo data seeder
+│   │   ├── alembic/                      # Database migration revisions
+│   │   ├── requirements.txt              # Production Python dependencies
+│   │   ├── run.py                        # Server entrypoint (Runs on port 8085)
+│   │   ├── .env.example                  # Environment configuration template
+│   │   └── .gitignore                    # Python, bytecode, and virtualenv gitignore
+│   └── docs/                             # Backend documentation
+│       ├── API_DOCUMENTATION.md          # Complete 172-endpoint REST API reference
+│       └── PAYMENT_INTEGRATION_AND_TESTING_GUIDE.md # Payment flows & verification guide
 │
-├── ml/
-│   └── ...
-│
-├── uploads/
-│   └── ...
-│
-├── .gitattributes
-├── LICENSE
-├── README.md
-└── ...
+├── carzen_db_v5_new.sql                  # Production-ready MySQL dump (28 tables + seed data)
+├── passwords.txt                         # Seeded test user credentials
+├── reference.txt                         # Domain reference benchmarks
+├── README.md                             # Main repository guide (this file)
+└── LICENSE                               # MIT License
 ```
 
 ---
 
-## 🔐 Authentication & Authorization
+## 🔑 Pre-Seeded Demo Accounts
 
-CarZen uses token-based authentication between the Flutter application and FastAPI backend.
+The included database dump ([carzen_db_v5_new.sql](carzen_db_v5_new.sql)) comes pre-populated with verified test accounts:
 
-The platform supports two primary user roles:
-
-- **User** — Can access marketplace and user-level functionality such as browsing, buying, selling/reselling vehicles, favorites, orders, and other supported features.
-- **Admin** — Provides administrative functionality such as user and order management.
-
-Public marketplace content can be accessed without requiring users to log in. Authentication is required when accessing protected operations.
-
----
-
-## 🔄 Application Flow
-
-```text
-                ┌─────────────┐
-                │    User     │
-                └──────┬──────┘
-                       │
-                       ▼
-                ┌─────────────┐
-                │  Flutter UI │
-                └──────┬──────┘
-                       │
-                 REST API Calls
-                       │
-                       ▼
-                ┌─────────────┐
-                │   FastAPI   │
-                └──────┬──────┘
-                       │
-             ┌─────────┴─────────┐
-             ▼                   ▼
-       ┌───────────┐       ┌───────────┐
-       │   MySQL   │       │     ML    │
-       │ Database  │       │ Components│
-       └───────────┘       └───────────┘
-```
+| Email | Password | Role | Account Status | Typical Use Case |
+| :--- | :--- | :--- | :--- | :--- |
+| `admin@gmail.com` | `Demo@1234` | **ADMIN** | `ACTIVE` | Vehicle approvals, moderation, workshop queue |
+| `rahul.patel@gmail.com` | `Demo@1234` | **USER** | `ACTIVE` | Car owner / Seller with active vehicle listings |
+| `ajay.mehta@gmail.com` | `Demo@1234` | **USER** | `ACTIVE` | Buyer placing orders & booking services |
+| `nikhil.patel@gmail.com` | `Demo@1234` | **USER** | `ACTIVE` | Verified buyer with order history |
+| `vishal@gmail.com` | `Vishal@123` | **USER** | `ACTIVE` | Primary developer sandbox account |
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Getting Started & Installation
 
 ### Prerequisites
-
-Make sure the following are installed:
-
-- Flutter SDK
-- Dart SDK
-- Python 3.x
-- MySQL Server
-- Git
-- Android Studio / VS Code
-- A supported web or mobile environment for Flutter
+- **Python 3.10+** (Python 3.12 recommended)
+- **Flutter SDK 3.24+** (with Chrome enabled for web)
+- **MySQL 8.0+** running on `localhost:3306`
+- **Git**
 
 ---
 
-### 1. Clone the Repository
+### Step 1: Set Up MySQL Database
 
+1. Open your MySQL client (MySQL Workbench, DBeaver, or terminal):
+   ```sql
+   CREATE DATABASE IF NOT EXISTS carzen_db_v5_new CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   ```
+2. Import the clean, production-verified database dump:
+   ```bash
+   mysql -u root -p carzen_db_v5_new < carzen_db_v5_new.sql
+   ```
+   *(This creates all 28 tables, relationships, vehicle catalog, and pre-seeded demo users).*
+
+---
+
+### Step 2: Configure & Start the Backend
+
+1. **Navigate to the backend directory**:
+   ```bash
+   cd CarZen_Backend_Python/backend
+   ```
+
+2. **Create and activate a virtual environment**:
+   ```bash
+   # Windows (PowerShell)
+   python -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+
+   # macOS / Linux
+   python3 -m venv .venv
+   source .venv/bin/activate
+   ```
+
+3. **Install dependencies**:
+   ```bash
+   pip install --upgrade pip
+   pip install -r requirements.txt
+   ```
+
+4. **Set up `.env`**:
+   Copy `.env.example` to `.env` (or verify existing `.env`):
+   ```ini
+   DATABASE_HOST="localhost"
+   DATABASE_PORT=3306
+   DATABASE_NAME="carzen_db_v5_new"
+   DATABASE_USER="root"
+   DATABASE_PASSWORD="your_mysql_password"
+   PORT=8085
+   CORS_ORIGINS="http://localhost:3000,http://127.0.0.1:8080,http://localhost:8080,http://127.0.0.1:8085,http://localhost:8085,*"
+
+   SECRET_KEY="supersecretkey"
+   ALGORITHM="HS256"
+   ACCESS_TOKEN_EXPIRE_MINUTES=1440
+
+   RAZORPAY_KEY_ID="rzp_test_TdsPijG9uRETAs"
+   RAZORPAY_KEY_SECRET="your_razorpay_secret"
+   RAZORPAY_WEBHOOK_SECRET="your_webhook_secret"
+   RAZORPAY_MAX_ORDER_AMOUNT_PAISE=5000000
+   ```
+
+5. **Start the backend server**:
+   ```bash
+   python run.py
+   ```
+   The backend will start at: **`http://localhost:8085`**
+   - Interactive Swagger API Explorer: **`http://localhost:8085/docs`**
+   - ReDoc Documentation: **`http://localhost:8085/redoc`**
+
+---
+
+### Step 3: Configure & Start the Flutter Frontend
+
+1. **Navigate to the Flutter project**:
+   ```bash
+   cd ../../CarZen_UI_Flutter
+   ```
+
+2. **Fetch packages**:
+   ```bash
+   flutter pub get
+   ```
+
+3. **Run on Flutter Web**:
+   ```bash
+   flutter run -d chrome --web-port=8080
+   ```
+   The application will launch in Chrome at: **`http://localhost:8080`**
+
+   > [!TIP]
+   > The Flutter client is configured to automatically communicate with `http://127.0.0.1:8085` for Web/Desktop and `http://10.0.2.2:8085` for Android Emulators.
+
+---
+
+## 🛠️ Developer & Testing Tools
+
+### 1. Standalone Razorpay Payment Simulator
+Test online payments without opening the full Flutter UI:
+1. Ensure the backend is running on port 8085.
+2. Open [`CarZen_Backend_Python/backend/paymentCheck/index.html`](CarZen_Backend_Python/backend/paymentCheck/index.html) directly in any browser.
+3. Paste a created Razorpay Order ID and test checkout interactions with Razorpay test credentials.
+
+### 2. Automated Live Chrome E2E Smoke Tester
+Run an automated end-to-end browser test that navigates marketplace listings, checks authentication, inspects the admin portal, and tests car detail views with an on-screen HUD badge:
 ```bash
-git clone https://github.com/VishalChudasama08/CarZen.git
-cd CarZen
+python CarZen_Backend_Python/backend/scripts/live_chrome_test_suite.py
 ```
 
-### 2. Backend Setup
-
-Navigate to the backend directory:
-
-```powershell
-cd backend
-```
-
-Create a Python virtual environment:
-
-```powershell
-python -m venv .venv
-```
-
-#### Windows PowerShell
-
-If activation is blocked by the PowerShell execution policy, run:
-
-```powershell
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-```
-
-Then activate the environment:
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-```
-
-You should see `(.venv)` at the beginning of the terminal prompt.
-
-Install the required dependencies:
-
-```powershell
-python -m pip install --upgrade pip
-pip install -r requirements.txt
-```
-
-### 3. Database Setup
-
-Create the MySQL database according to the backend configuration.
-
-The database SQL file is available inside the `docs/` directory. Import it into MySQL to create the required database structure and data.
-
-Configure the `.env` file with your local MySQL configuration:
-
-```env
-DATABASE_NAME=carzen_db_v1
-DATABASE_USER=root
-DATABASE_PASSWORD=your_password
-```
-
-Do not commit real passwords, API keys, payment credentials, or other secrets to GitHub.
-
-### 4. Run the Backend
-
-Make sure the virtual environment is activated:
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-```
-
-From the `backend` directory, run:
-
-```powershell
-python run.py
-```
-
-The FastAPI server will normally be available at:
-
-```text
-http://127.0.0.1:8000
-```
-
-FastAPI Swagger documentation:
-
-```text
-http://127.0.0.1:8000/docs
-```
-
-### 5. Run the Flutter Application
-
-Open another terminal and navigate to the Flutter project:
-
+### 3. Automated REST API Docs Generator
+Regenerate [API_DOCUMENTATION.md](CarZen_Backend_Python/docs/API_DOCUMENTATION.md) directly from FastAPI’s live OpenAPI schema:
 ```bash
-cd CarZen_UI
+python CarZen_Backend_Python/backend/scripts/build_docs.py
 ```
 
-Install Flutter dependencies:
+---
 
+## 🔒 Authentication & API Usage Example
+
+CarZen utilizes OAuth2 Bearer Tokens (JWT).
+
+### 1. Authenticate (Login)
 ```bash
-flutter pub get
+curl -X POST "http://localhost:8085/v1/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "admin@gmail.com",
+    "password": "Demo@1234"
+  }'
 ```
 
-Run the application:
+**Response**:
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer"
+}
+```
 
+### 2. Query Protected Endpoints
+Include the token in the `Authorization` header:
 ```bash
-flutter run
+curl -X GET "http://localhost:8085/v1/users/me" \
+  -H "Authorization: Bearer <access_token>"
 ```
-
-For Flutter Web:
-
-```bash
-flutter run -d chrome --web-port=3000
-```
-
----
-
-## 🧪 Testing
-
-Backend APIs can be tested using:
-
-- FastAPI Swagger UI
-- Postman
-- Bruno
-- Other REST API clients
-
-Flutter code can be analyzed using:
-
-```bash
-flutter analyze
-```
-
-The application should be tested across relevant screen sizes and platforms to ensure responsive behavior.
-
----
-
-## 🔌 API Architecture
-
-The Flutter application communicates with the FastAPI backend through REST APIs.
-
-Major API areas include functionality related to:
-
-```text
-Authentication
-Users
-Cars
-Listings
-Favorites
-Orders
-Administration
-```
-
-The exact available endpoints are defined by the FastAPI backend and its OpenAPI documentation.
-
----
-
-## 🗄️ Database
-
-CarZen uses **MySQL** as its relational database.
-
-The database contains data related to areas such as:
-
-- Users
-- Cars
-- Listings
-- Favorites
-- Orders
-- Payments
-- Ownership information
-- Other automobile marketplace data
-
-The database SQL file required for setup is included in the project's **`docs/` directory**.
-
----
-
-## 🤖 Machine Learning
-
-Machine Learning is included as part of the CarZen platform to provide intelligent automobile-related functionality.
-
-The ML component can be integrated with the automobile marketplace to support data-driven features such as:
-
-- Vehicle-related predictions
-- Recommendations
-- Automobile data analysis
-- Other intelligent functionality
-
-The exact ML capabilities may evolve as the project progresses.
-
----
-
-## 📱 Responsive Design
-
-CarZen is designed to provide a responsive experience across:
-
-- 📱 Mobile
-- 📲 Tablet
-- 💻 Desktop
-- 🌐 Web
-
-The Flutter UI uses reusable widgets and responsive layouts to maintain a consistent user experience across different screen sizes.
-
----
-
-## 🔒 Security Considerations
-
-The project follows basic security practices including:
-
-- Token-based authentication
-- Protected API operations
-- Password hashing through the backend authentication system
-- Environment variables for sensitive configuration
-- Separation of frontend and backend
-- Role-based access control
-
-For production deployment, additional security measures such as HTTPS, secure secret management, rate limiting, input validation, logging, and production database configuration should be implemented.
-
----
-
-## 🎯 Project Goals
-
-The main goals of CarZen are to:
-
-1. Simplify the process of buying and selling cars.
-2. Provide a centralized automobile marketplace.
-3. Make vehicle information easily accessible.
-4. Provide users with tools to manage their vehicle-related activities.
-5. Integrate Machine Learning into an automobile marketplace.
-6. Provide a modern cross-platform user experience.
-7. Build a scalable full-stack application using modern technologies.
-
----
-
-## 🔮 Future Scope
-
-Possible future improvements include:
-
-- Advanced ML-based vehicle recommendations
-- Vehicle price prediction
-- Improved search and filtering
-- Online payment integration
-- Vehicle service booking
-- Accessories marketplace
-- Notifications
-- Messaging between buyers and sellers
-- Advanced admin analytics
-- Cloud deployment
-- Improved recommendation systems
-
----
-
-## 👨‍💻 Development Team
-
-**CarZen — MCA Semester 3 Project**
-
-Developed using:
-
-**Flutter + Python + FastAPI + MySQL + Machine Learning**
 
 ---
 
 ## 📄 License
 
-This project is developed for **educational and academic purposes**.
-
-See the [`LICENSE`](LICENSE) file for the applicable license terms.
-
----
-
-## ⭐ CarZen
-
-If you find the project interesting, consider giving the repository a ⭐ on GitHub.
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
