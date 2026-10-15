@@ -252,7 +252,7 @@ The included database dump ([carzen_db_v5_new.sql](carzen_db_v5_new.sql)) comes 
    ALGORITHM="HS256"
    ACCESS_TOKEN_EXPIRE_MINUTES=1440
 
-   RAZORPAY_KEY_ID="rzp_test_TdsPijG9uRETAs"
+   RAZORPAY_KEY_ID="rzp_test_key_ID"
    RAZORPAY_KEY_SECRET="your_razorpay_secret"
    RAZORPAY_WEBHOOK_SECRET="your_webhook_secret"
    RAZORPAY_MAX_ORDER_AMOUNT_PAISE=5000000
