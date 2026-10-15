@@ -65,7 +65,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final id = n.referenceId;
     switch (n.referenceType) {
       case 'order':
-        return AppRoutes.orders;
+      case 'order_payment':
+        return _session.isAdmin ? AppRoutes.adminOrders : AppRoutes.orders;
       case 'listing':
         return id == null ? null : AppRoutes.carDetails(id);
       case 'inquiry':
@@ -73,8 +74,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       case 'car':
         return n.type == 'admin' ? AppRoutes.adminCars : AppRoutes.sell;
       case 'service_request':
+      case 'service_payment':
         if (_session.isAdmin) return AppRoutes.adminServiceRequests;
         return id == null ? AppRoutes.serviceRequests : AppRoutes.serviceRequest(id);
+    }
+    if (n.type == 'payment') {
+      return _session.isAdmin ? AppRoutes.adminOrders : AppRoutes.orders;
     }
     return null;
   }
@@ -98,7 +103,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   IconData _iconFor(NotificationRecord n) {
-    if (n.referenceType == 'service_request') return Icons.build_circle_outlined;
+    if (n.referenceType == 'service_request' || n.referenceType == 'service_payment') {
+      return Icons.build_circle_outlined;
+    }
     switch (n.type) {
       case 'order':
         return Icons.receipt_long_outlined;
@@ -120,7 +127,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const CarZenNavBar(current: NavSection.notifications, title: 'Notifications'),
+      appBar: const CarZenNavBar(current: NavSection.notifications, title: 'Notifications', fallbackRoute: AppRoutes.profile),
       bottomNavigationBar: const CarZenBottomBar(current: NavSection.notifications),
       body: SafeArea(
         bottom: false,

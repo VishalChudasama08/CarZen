@@ -1,3 +1,4 @@
+import 'package:carzen_flutter/routes/app_routes.dart';
 import 'package:carzen_flutter/widgets/carzen_nav_bar.dart';
 import 'package:carzen_flutter/widgets/content_width.dart';
 import 'package:flutter/material.dart';
@@ -8,7 +9,7 @@ import 'package:carzen_flutter/theme/app_theme.dart';
 import 'package:carzen_flutter/widgets/state_views.dart';
 
 /// Manages one car's features — `GET/POST /v1/cars/{id}/features`,
-/// `PATCH`/`DELETE .package:carzen_flutter/features/{featureId}`.
+/// `PATCH`/`DELETE /v1/cars/{id}/features/{featureId}`.
 class CarFeaturesScreen extends StatefulWidget {
   final int carId;
   const CarFeaturesScreen({super.key, required this.carId});
@@ -82,10 +83,37 @@ class _CarFeaturesScreenState extends State<CarFeaturesScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: const CarZenNavBar(current: NavSection.sell, title: 'Features'),
+      appBar: const CarZenNavBar(current: NavSection.sell, title: 'Features', fallbackRoute: AppRoutes.sell),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _openFeatureDialog(),
         child: const Icon(Icons.add),
+      ),
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          border: Border(top: BorderSide(color: AppColors.divider)),
+        ),
+        child: SafeArea(
+          child: Row(
+            children: [
+              OutlinedButton.icon(
+                onPressed: () => _openFeatureDialog(),
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('Add Feature'),
+              ),
+              const Spacer(),
+              FilledButton.icon(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  showAppSnack(context, 'Features saved.');
+                },
+                icon: const Icon(Icons.check_rounded),
+                label: const Text('Save / Done'),
+              ),
+            ],
+          ),
+        ),
       ),
       body: ContentWidth(
         maxWidth: 720,
@@ -113,7 +141,7 @@ class _CarFeaturesScreenState extends State<CarFeaturesScreen> {
             return ListView.separated(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
               itemCount: features.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              separatorBuilder: (_, _) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
                 final feature = features[index];
                 return Container(

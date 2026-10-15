@@ -1,0 +1,8 @@
+CarZen_Backend_Python/backend/.env
+CarZen_Backend_Python/backend/.env.example
+
+__pycache__/*
+!__pycache__/.gitkeep
+
+CarZen_Backend_Python/backend/app/__pycache__/*
+!CarZen_Backend_Python/backend/app/__pycache__/.gitkeep

@@ -1,4 +1,5 @@
 import 'package:carzen_flutter/models/service_models.dart';
+import 'package:carzen_flutter/routes/app_routes.dart';
 import 'package:carzen_flutter/services/api_exception.dart';
 import 'package:carzen_flutter/services/service_catalog_api.dart';
 import 'package:carzen_flutter/theme/app_theme.dart';
@@ -140,7 +141,7 @@ class _AdminServicesScreenState extends State<AdminServicesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const CarZenNavBar(current: NavSection.adminServices, title: 'Service Catalog'),
+      appBar: const CarZenNavBar(current: NavSection.adminServices, title: 'Service Catalog', fallbackRoute: AppRoutes.admin),
       bottomNavigationBar: const CarZenBottomBar(current: NavSection.adminServices),
       floatingActionButton: Breakpoints.isCompact(context)
           ? FloatingActionButton.extended(onPressed: _edit, icon: const Icon(Icons.add_rounded), label: const Text('New service'))

@@ -1,6 +1,8 @@
 import 'package:carzen_flutter/models/enums.dart';
+import 'package:carzen_flutter/models/user_response.dart';
 import 'package:carzen_flutter/pages/add_edit_car_screen.dart';
 import 'package:carzen_flutter/pages/admin_cars_screen.dart';
+import 'package:carzen_flutter/pages/admin_dashboard_screen.dart';
 import 'package:carzen_flutter/pages/admin_service_requests_screen.dart';
 import 'package:carzen_flutter/pages/admin_services_screen.dart';
 import 'package:carzen_flutter/pages/admin_orders_screen.dart';
@@ -9,6 +11,8 @@ import 'package:carzen_flutter/pages/admin_users_screen.dart';
 import 'package:carzen_flutter/pages/book_service_screen.dart';
 import 'package:carzen_flutter/pages/browse_listings_screen.dart';
 import 'package:carzen_flutter/pages/car_details_screen.dart';
+import 'package:carzen_flutter/pages/change_password_screen.dart';
+import 'package:carzen_flutter/pages/edit_profile_screen.dart';
 import 'package:carzen_flutter/pages/favorites_screen.dart';
 import 'package:carzen_flutter/pages/home_page.dart';
 import 'package:carzen_flutter/pages/inquiries_screen.dart';
@@ -24,6 +28,7 @@ import 'package:carzen_flutter/pages/service_history_screen.dart';
 import 'package:carzen_flutter/pages/service_request_detail_screen.dart';
 import 'package:carzen_flutter/pages/services_screen.dart';
 import 'package:carzen_flutter/routes/app_routes.dart';
+import 'package:carzen_flutter/utils/slugs.dart';
 import 'package:carzen_flutter/widgets/carzen_nav_bar.dart';
 import 'package:carzen_flutter/widgets/require_auth.dart';
 import 'package:carzen_flutter/widgets/state_views.dart';
@@ -38,7 +43,7 @@ class AppRouter {
 
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
     final uri = Uri.parse(settings.name ?? AppRoutes.home);
-    return MaterialPageRoute<dynamic>(settings: settings, builder: (_) => _pageFor(uri));
+    return MaterialPageRoute<dynamic>(settings: settings, builder: (_) => _pageFor(uri, settings.arguments));
   }
 
   /// Web deep links: open exactly the requested page instead of Flutter's
@@ -50,7 +55,7 @@ class AppRouter {
   static Route<dynamic> onUnknownRoute(RouteSettings settings) =>
       MaterialPageRoute<dynamic>(settings: settings, builder: (_) => const NotFoundPage());
 
-  static Widget _pageFor(Uri uri) {
+  static Widget _pageFor(Uri uri, [Object? arguments]) {
     final segments = uri.pathSegments;
     if (segments.isEmpty) return const HomePage();
 
@@ -60,7 +65,7 @@ class AppRouter {
     switch (first) {
       case 'cars':
         if (segments.length == 1) return _browse(uri);
-        final listingId = int.tryParse(segments[1]);
+        final listingId = Slugs.parseCarIdFromSlug(segments[1]);
         return listingId == null ? const NotFoundPage() : CarDetailsScreen(listingId: listingId);
       case 'sell':
         return RequireAuth(userOnly: true, child: second == 'new' ? const AddEditCarScreen() : const MyCarsScreen());
@@ -69,6 +74,7 @@ class AppRouter {
       case 'orders':
         return const RequireAuth(userOnly: true, child: MyOrdersScreen());
       case 'inquiries':
+      case 'messages':
         if (segments.length == 1) return const RequireAuth(userOnly: true, child: InquiriesScreen());
         final inquiryId = int.tryParse(segments[1]);
         return inquiryId == null
@@ -77,19 +83,41 @@ class AppRouter {
       case 'notifications':
         return const RequireAuth(child: NotificationsScreen());
       case 'profile':
-        return const RequireAuth(child: ProfileScreen());
+        switch (second) {
+          case 'my-cars':
+            return const RequireAuth(userOnly: true, child: MyCarsScreen());
+          case 'edit':
+            return RequireAuth(
+              child: EditProfileScreen(user: arguments is UserResponse ? arguments : null),
+            );
+          case 'password':
+            return const RequireAuth(child: ChangePasswordScreen());
+          case null:
+            return const RequireAuth(child: ProfileScreen());
+        }
+        return const NotFoundPage();
       case 'services':
         // The catalog is public. Booking, requests and history are account pages.
         switch (second) {
           case null:
             return const ServicesScreen();
           case 'book':
-            return RequireAuth(userOnly: true, child: BookServiceScreen(preselectedIds: _ids(uri.queryParameters['ids'])));
+            List<int> preselectedIds = [];
+            if (arguments is List<int>) {
+              preselectedIds = arguments;
+            } else if (arguments is Iterable<int>) {
+              preselectedIds = arguments.toList();
+            } else if (arguments is int) {
+              preselectedIds = [arguments];
+            } else if (uri.queryParameters.containsKey('ids')) {
+              preselectedIds = _ids(uri.queryParameters['ids']);
+            }
+            return RequireAuth(userOnly: true, child: BookServiceScreen(preselectedIds: preselectedIds));
           case 'history':
             return const RequireAuth(userOnly: true, child: ServiceHistoryScreen());
           case 'requests':
             if (segments.length == 2) return const RequireAuth(userOnly: true, child: MyServiceRequestsScreen());
-            final requestId = int.tryParse(segments[2]);
+            final requestId = Slugs.parseServiceRequestId(segments[2]);
             return requestId == null
                 ? const NotFoundPage()
                 : RequireAuth(userOnly: true, child: ServiceRequestDetailScreen(requestId: requestId));
@@ -102,6 +130,8 @@ class AppRouter {
       case 'admin':
         switch (second) {
           case null:
+          case 'dashboard':
+            return const RequireAuth(adminOnly: true, child: AdminDashboardScreen());
           case 'cars':
             return const RequireAuth(adminOnly: true, child: AdminCarsScreen());
           case 'orders':

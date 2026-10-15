@@ -33,6 +33,39 @@ class ListingFilters {
     this.sort = ListingSort.newest,
   });
 
+  static const Object _sentinel = Object();
+
+  ListingFilters copyWith({
+    Object? search = _sentinel,
+    Object? brandId = _sentinel,
+    Object? modelId = _sentinel,
+    Object? fuelType = _sentinel,
+    Object? transmission = _sentinel,
+    Object? condition = _sentinel,
+    Object? minPrice = _sentinel,
+    Object? maxPrice = _sentinel,
+    Object? minYear = _sentinel,
+    Object? maxYear = _sentinel,
+    Object? maxMileage = _sentinel,
+    Object? city = _sentinel,
+    ListingSort? sort,
+  }) =>
+      ListingFilters(
+        search: identical(search, _sentinel) ? this.search : search as String?,
+        brandId: identical(brandId, _sentinel) ? this.brandId : brandId as int?,
+        modelId: identical(modelId, _sentinel) ? this.modelId : modelId as int?,
+        fuelType: identical(fuelType, _sentinel) ? this.fuelType : fuelType as FuelType?,
+        transmission: identical(transmission, _sentinel) ? this.transmission : transmission as TransmissionType?,
+        condition: identical(condition, _sentinel) ? this.condition : condition as CarCondition?,
+        minPrice: identical(minPrice, _sentinel) ? this.minPrice : minPrice as num?,
+        maxPrice: identical(maxPrice, _sentinel) ? this.maxPrice : maxPrice as num?,
+        minYear: identical(minYear, _sentinel) ? this.minYear : minYear as int?,
+        maxYear: identical(maxYear, _sentinel) ? this.maxYear : maxYear as int?,
+        maxMileage: identical(maxMileage, _sentinel) ? this.maxMileage : maxMileage as num?,
+        city: identical(city, _sentinel) ? this.city : city as String?,
+        sort: sort ?? this.sort,
+      );
+
   ListingFilters withSearch(String? value) {
     final trimmed = value?.trim();
     return ListingFilters(
@@ -71,18 +104,22 @@ class ListingFilters {
   /// Keeps search + sort but drops every panel filter.
   ListingFilters clearedPanel() => ListingFilters(search: search, sort: sort);
 
+  /// Alias for clearedPanel.
+  ListingFilters clearedPanelFilters() => clearedPanel();
+
   /// Number of panel filters currently applied (shown on the Filters button).
-  int get activeCount => [
-        brandId,
-        modelId,
-        fuelType,
-        transmission,
-        condition,
-        minPrice,
-        maxPrice,
-        minYear,
-        maxYear,
-        maxMileage,
-        city,
-      ].where((v) => v != null).length;
+  /// Groups price range (minPrice/maxPrice) and year range (minYear/maxYear).
+  int get activeCount {
+    var count = 0;
+    if (brandId != null) count++;
+    if (modelId != null) count++;
+    if (fuelType != null) count++;
+    if (transmission != null) count++;
+    if (condition != null) count++;
+    if (minPrice != null || maxPrice != null) count++;
+    if (minYear != null || maxYear != null) count++;
+    if (maxMileage != null) count++;
+    if (city != null) count++;
+    return count;
+  }
 }

@@ -93,7 +93,11 @@ class _InquiryThreadScreenState extends State<InquiryThreadScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: const CarZenNavBar(current: NavSection.messages, title: 'Conversation'),
+      appBar: const CarZenNavBar(
+        current: NavSection.messages,
+        title: 'Conversation',
+        fallbackRoute: AppRoutes.inquiries,
+      ),
       body: SafeArea(child: _buildBody()),
     );
   }

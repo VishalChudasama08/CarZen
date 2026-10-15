@@ -23,8 +23,7 @@ class _Badge extends StatelessWidget {
       );
 }
 
-/// `Admin` / `User`. Legacy backend roles (seller, service_provider...) are
-/// shown as `User`, matching the two-role product model.
+/// Displays a badge only for Admin accounts. Regular users have no role badge.
 class RoleBadge extends StatelessWidget {
   final UserResponse user;
   const RoleBadge({super.key, required this.user});
@@ -32,7 +31,7 @@ class RoleBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) => user.isAdmin
       ? const _Badge(text: 'Admin', color: AppColors.primary, icon: Icons.shield_outlined)
-      : const _Badge(text: 'User', color: AppColors.textSecondary, icon: Icons.person_outline_rounded);
+      : const SizedBox.shrink();
 }
 
 class StatusBadge extends StatelessWidget {

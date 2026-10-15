@@ -37,3 +37,34 @@ class OrderRecord {
     );
   }
 }
+
+/// Mirrors `PaymentStatusResponse` and `PaymentResponse` from `/v1/payments`.
+class CarPaymentRecord {
+  final int id;
+  final int orderId;
+  final num amount;
+  final String status;
+  final String paymentMethod;
+  final String? razorpayOrderId;
+  final String? razorpayKeyId;
+
+  const CarPaymentRecord({
+    required this.id,
+    required this.orderId,
+    required this.amount,
+    required this.status,
+    required this.paymentMethod,
+    this.razorpayOrderId,
+    this.razorpayKeyId,
+  });
+
+  factory CarPaymentRecord.fromJson(Map<String, dynamic> json) => CarPaymentRecord(
+        id: json['id'] as int,
+        orderId: json['order_id'] as int,
+        amount: parseNum(json['amount']),
+        status: json['status'] as String? ?? 'pending',
+        paymentMethod: json['payment_method'] as String? ?? 'online',
+        razorpayOrderId: json['razorpay_order_id'] as String?,
+        razorpayKeyId: json['razorpay_key_id'] as String?,
+      );
+}

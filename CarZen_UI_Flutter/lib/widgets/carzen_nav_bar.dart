@@ -3,6 +3,7 @@ import 'package:carzen_flutter/services/session_controller.dart';
 import 'package:carzen_flutter/theme/app_theme.dart';
 import 'package:carzen_flutter/utils/breakpoints.dart';
 import 'package:carzen_flutter/widgets/app_logo.dart';
+import 'package:carzen_flutter/widgets/page_back_button.dart';
 import 'package:flutter/material.dart';
 
 /// Which top-level area the current page belongs to (highlighted in the bar).
@@ -18,6 +19,7 @@ enum NavSection {
   messages,
   notifications,
   profile,
+  adminDashboard,
   adminUsers,
   adminCars,
   adminOrders,
@@ -61,7 +63,7 @@ const _primary = <_Destination>[
 /// Administrators do not buy, sell or book services, so they get their own
 /// navigation built from the admin endpoints instead of the marketplace one.
 const _adminPrimary = <_Destination>[
-  _Destination('Home', Icons.home_outlined, Icons.home_rounded, AppRoutes.home, NavSection.home),
+  _Destination('Dashboard', Icons.dashboard_outlined, Icons.dashboard_rounded, AppRoutes.admin, NavSection.adminDashboard),
   _Destination('Users', Icons.group_outlined, Icons.group_rounded, AppRoutes.adminUsers, NavSection.adminUsers),
   _Destination('Car Approvals', Icons.fact_check_outlined, Icons.fact_check_rounded, AppRoutes.adminCars,
       NavSection.adminCars),
@@ -106,7 +108,20 @@ class CarZenNavBar extends StatefulWidget implements PreferredSizeWidget {
   /// Page title shown on compact widths (the logo is shown when null).
   final String? title;
 
-  const CarZenNavBar({super.key, this.current = NavSection.none, this.title});
+  /// Fallback route when clicking back and Navigator cannot pop (e.g. deep link).
+  final String? fallbackRoute;
+
+  /// Explicitly control back button visibility. When null, defaults to true
+  /// if [fallbackRoute] is provided or if the current Navigator stack can pop.
+  final bool? showBackButton;
+
+  const CarZenNavBar({
+    super.key,
+    this.current = NavSection.none,
+    this.title,
+    this.fallbackRoute,
+    this.showBackButton,
+  });
 
   @override
   Size get preferredSize => const Size.fromHeight(64);
@@ -127,6 +142,9 @@ class _CarZenNavBarState extends State<CarZenNavBar> {
   String get _currentPath => AppNav.pathOf(ModalRoute.of(context)?.settings.name);
 
   void _go(String route) => AppNav.go(Navigator.of(context), _currentPath, route);
+
+  bool _hasBack(BuildContext context) =>
+      widget.showBackButton ?? (widget.fallbackRoute != null || Navigator.of(context).canPop());
 
   Future<void> _logout() async {
     final navigator = Navigator.of(context);
@@ -160,18 +178,21 @@ class _CarZenNavBarState extends State<CarZenNavBar> {
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _session,
-      builder: (context, _) => Breakpoints.isExpanded(context) ? _buildExpanded() : _buildCompact(context),
+      builder: (context, _) => Breakpoints.isExpanded(context) ? _buildExpanded(context) : _buildCompact(context),
     );
   }
 
   Widget _logo() => AppLogo(height: 38, onTap: () => _go(AppRoutes.home));
 
-  AppBar _buildExpanded() {
+  AppBar _buildExpanded(BuildContext context) {
     final links = _session.isAdmin ? _adminPrimary : _primary;
+    final hasBack = _hasBack(context);
     return AppBar(
       automaticallyImplyLeading: false,
       backgroundColor: AppColors.primary,
-      titleSpacing: 24,
+      leading: hasBack ? PageBackButton(fallbackRoute: widget.fallbackRoute, color: Colors.white) : null,
+      leadingWidth: hasBack ? 56 : null,
+      titleSpacing: hasBack ? 8 : 24,
       toolbarHeight: 64,
       title: Row(
         children: [
@@ -220,18 +241,19 @@ class _CarZenNavBarState extends State<CarZenNavBar> {
   }
 
   AppBar _buildCompact(BuildContext context) {
-    final canPop = Navigator.of(context).canPop();
+    final hasBack = _hasBack(context);
     final showTitle = widget.title != null && widget.current != NavSection.home;
     return AppBar(
       automaticallyImplyLeading: false,
       backgroundColor: AppColors.primary,
-      leading: canPop
-          ? const BackButton(color: Colors.white)
+      leading: hasBack
+          ? PageBackButton(fallbackRoute: widget.fallbackRoute, color: Colors.white)
           : IconButton(
               tooltip: 'Menu',
               icon: const Icon(Icons.menu_rounded, color: Colors.white),
               onPressed: _openMenu,
             ),
+      leadingWidth: 56,
       titleSpacing: 0,
       title: showTitle
           ? Text(
@@ -242,7 +264,8 @@ class _CarZenNavBarState extends State<CarZenNavBar> {
             )
           : Align(alignment: Alignment.centerLeft, child: _logo()),
       actions: [
-        if (canPop) IconButton(tooltip: 'Menu', icon: const Icon(Icons.menu_rounded, color: Colors.white), onPressed: _openMenu),
+        if (hasBack)
+          IconButton(tooltip: 'Menu', icon: const Icon(Icons.menu_rounded, color: Colors.white), onPressed: _openMenu),
         if (_session.isLoggedIn)
           IconButton(
             tooltip: 'Profile',

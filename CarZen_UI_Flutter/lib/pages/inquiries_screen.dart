@@ -42,7 +42,11 @@ class _InquiriesScreenState extends State<InquiriesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const CarZenNavBar(current: NavSection.messages, title: 'Messages'),
+      appBar: const CarZenNavBar(
+        current: NavSection.messages,
+        title: 'Messages',
+        fallbackRoute: AppRoutes.home,
+      ),
       bottomNavigationBar: const CarZenBottomBar(current: NavSection.messages),
       body: SafeArea(
         bottom: false,

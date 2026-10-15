@@ -65,6 +65,8 @@ class UserResponse {
   bool get hasLegacyRole => role != 'admin' && role != 'user';
 
   String get statusLabel => status.isEmpty ? '' : status[0].toUpperCase() + status.substring(1);
+  bool get isActive => status.toLowerCase() == 'active';
+  bool get isBlocked => status.toLowerCase() == 'blocked';
 
   String get initials {
     final a = firstName.isNotEmpty ? firstName[0] : '';

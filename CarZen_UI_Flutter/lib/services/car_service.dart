@@ -131,11 +131,8 @@ class CarService {
   }
 
   Future<CarMedia> setPrimaryMedia(int carId, int mediaId) async {
-    // The general media update route is registered before the convenience
-    // `/primary` route in the current FastAPI app. Using its documented
-    // `is_primary` field avoids a path-parameter 422 for the literal word
-    // "primary" while preserving the backend's intended operation.
-    final json = await _client.patch('/cars/$carId/media/$mediaId', body: {'is_primary': true});
+    // TODO(Ayush): check media_service.update_media / set_primary — DB shows is_primary=false even after this call
+    final json = await _client.patch('/cars/$carId/media/$mediaId/primary');
     return CarMedia.fromJson(json as Map<String, dynamic>);
   }
 

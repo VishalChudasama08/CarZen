@@ -1,4 +1,5 @@
 import 'package:carzen_flutter/models/service_models.dart';
+import 'package:carzen_flutter/routes/app_routes.dart';
 import 'package:carzen_flutter/services/api_exception.dart';
 import 'package:carzen_flutter/services/service_request_api.dart';
 import 'package:carzen_flutter/theme/app_theme.dart';
@@ -71,7 +72,7 @@ class _AdminServiceRequestsScreenState extends State<AdminServiceRequestsScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const CarZenNavBar(current: NavSection.adminServiceRequests, title: 'Service Requests'),
+      appBar: const CarZenNavBar(current: NavSection.adminServiceRequests, title: 'Service Requests', fallbackRoute: AppRoutes.admin),
       bottomNavigationBar: const CarZenBottomBar(current: NavSection.adminServiceRequests),
       body: SafeArea(
         bottom: false,
@@ -308,10 +309,25 @@ class _RequestSheetState extends State<_RequestSheet> {
     );
   }
 
+  Future<void> _confirmCash() async {
+    final note = await _askText(
+      title: 'Confirm cash payment for #${_request.id}',
+      label: 'Notes / receipt number (optional)',
+      action: 'Confirm payment',
+    );
+    if (note == null) return;
+    await _run(() => widget.api.adminConfirmCash(_request.id, notes: note), 'Cash payment confirmed.');
+  }
+
   @override
   Widget build(BuildContext context) {
     final r = _request;
     final actions = _actionsFor(r.status);
+    final canConfirmCash = r.status != ServiceRequestStatus.cancelled &&
+        r.status != ServiceRequestStatus.rejected &&
+        r.paymentStatus != 'paid' &&
+        (r.paymentMethod == 'cash' || r.paymentMethod == null || r.paymentMethod!.isEmpty);
+
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
@@ -343,18 +359,42 @@ class _RequestSheetState extends State<_RequestSheet> {
                   if (r.user!.phoneNumber != null && r.user!.phoneNumber!.isNotEmpty) DetailRow('Phone', r.user!.phoneNumber!),
                 ],
                 if (r.car != null) DetailRow('Car', r.car!.label),
-                DetailRow('Appointment', '${formatDate(r.scheduledDate)} · ${formatClock(r.scheduledTime)}', emphasize: true),
+                DetailRow(
+                  r.status == ServiceRequestStatus.requested ? 'Requested slot' : 'Confirmed slot',
+                  '${formatDate(r.scheduledDate)} · ${formatClock(r.scheduledTime)}',
+                  emphasize: true,
+                ),
                 for (final item in r.items)
                   DetailRow(
                     item == r.items.first ? 'Services' : '',
                     '${item.serviceName}  —  ${formatInr(item.unitPrice)}',
                   ),
-                DetailRow('Total', formatInr(r.amount), emphasize: true),
-                if (r.paymentStatus.isNotEmpty) DetailRow('Payment', paymentInfo(r)),
+                DetailRow('Base amount', formatInr(r.baseAmount ?? r.amount)),
+                if ((r.partsCost ?? 0) > 0 || r.status == ServiceRequestStatus.completed)
+                  DetailRow('Parts cost', formatInr(r.partsCost ?? 0)),
+                if ((r.laborCost ?? 0) > 0 || r.status == ServiceRequestStatus.completed)
+                  DetailRow('Labour cost', formatInr(r.laborCost ?? 0)),
+                DetailRow('Total payable', formatInr(r.payableAmount), emphasize: true),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    children: [
+                      const SizedBox(
+                        width: 140,
+                        child: Text('Payment', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+                      ),
+                      servicePaymentPill(r),
+                      if (r.paymentMethod != null && r.paymentMethod!.isNotEmpty) ...[
+                        const SizedBox(width: 8),
+                        Text('(${r.paymentMethod!})', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                      ],
+                    ],
+                  ),
+                ),
                 if (r.notes != null && r.notes!.isNotEmpty) DetailRow('Customer notes', r.notes!),
                 if (r.adminNote != null && r.adminNote!.isNotEmpty) DetailRow('Admin note', r.adminNote!),
                 const SizedBox(height: 16),
-                if (actions.isEmpty)
+                if (actions.isEmpty && !canConfirmCash)
                   Text('This request is ${r.status.label.toLowerCase()}; no further actions are available.', style: Theme.of(context).textTheme.bodySmall)
                 else
                   Wrap(
@@ -377,6 +417,13 @@ class _RequestSheetState extends State<_RequestSheet> {
                           onPressed: _busy ? null : _complete,
                           icon: const Icon(Icons.task_alt_rounded),
                           label: const Text('Complete'),
+                        ),
+                      if (canConfirmCash)
+                        FilledButton.icon(
+                          style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+                          onPressed: _busy ? null : _confirmCash,
+                          icon: const Icon(Icons.payments_rounded),
+                          label: const Text('Confirm cash received'),
                         ),
                       if (actions.contains('reject'))
                         OutlinedButton.icon(
@@ -599,18 +646,24 @@ class _CompleteDialogState extends State<_CompleteDialog> {
 
   num? _num(TextEditingController c) => c.text.trim().isEmpty ? null : num.parse(c.text.trim());
 
-  Widget _field(TextEditingController c, String label) => Padding(
+  Widget _field(TextEditingController c, String label, {ValueChanged<String>? onChanged}) => Padding(
         padding: const EdgeInsets.only(bottom: 12),
         child: TextFormField(
           controller: c,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           decoration: InputDecoration(labelText: label),
           validator: _optionalNumber,
+          onChanged: onChanged,
         ),
       );
 
   @override
   Widget build(BuildContext context) {
+    final base = widget.request.baseAmount ?? widget.request.amount;
+    final parts = num.tryParse(_parts.text.trim()) ?? 0;
+    final labor = num.tryParse(_labor.text.trim()) ?? 0;
+    final newTotal = base + parts + labor;
+
     return AlertDialog(
       title: Text('Complete request #${widget.request.id}'),
       content: SizedBox(
@@ -638,11 +691,36 @@ class _CompleteDialogState extends State<_CompleteDialog> {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(child: _field(_parts, 'Parts cost (₹)')),
+                    Expanded(child: _field(_parts, 'Parts cost (₹)', onChanged: (_) => setState(() {}))),
                     const SizedBox(width: 12),
-                    Expanded(child: _field(_labor, 'Labour cost (₹)')),
+                    Expanded(child: _field(_labor, 'Labour cost (₹)', onChanged: (_) => setState(() {}))),
                   ],
                 ),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    border: Border.all(color: AppColors.divider),
+                    borderRadius: BorderRadius.circular(AppRadii.md),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Bill calculation preview', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.textPrimary)),
+                      const SizedBox(height: 4),
+                      Text('Base: ${formatInr(base)} + Parts: ${formatInr(parts)} + Labor: ${formatInr(labor)}', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                      const Divider(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('New total:', style: TextStyle(fontWeight: FontWeight.w600)),
+                          Text(formatInr(newTotal), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: AppColors.primary)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(

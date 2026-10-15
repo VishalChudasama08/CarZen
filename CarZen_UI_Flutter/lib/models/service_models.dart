@@ -197,8 +197,8 @@ class ServiceCarSummary {
 
 /// Mirrors `ServiceRequestResponse`.
 ///
-/// `payment_status` / `payment_method` are informational only: this app has no
-/// payment flow, so they are displayed but never turned into an action.
+/// In V4, includes billing breakdown fields: [baseAmount], [partsCost],
+/// [laborCost], [totalAmount] and [payableAmount].
 class ServiceRequestRecord {
   final int id;
   final int userId;
@@ -211,6 +211,10 @@ class ServiceRequestRecord {
   final String scheduledTime;
   final String? notes;
   final num amount;
+  final num? baseAmount;
+  final num? partsCost;
+  final num? laborCost;
+  final num? totalAmount;
   final String paymentStatus;
   final String? paymentMethod;
   final ServiceRequestStatus status;
@@ -233,6 +237,10 @@ class ServiceRequestRecord {
     required this.scheduledTime,
     this.notes,
     required this.amount,
+    this.baseAmount,
+    this.partsCost,
+    this.laborCost,
+    this.totalAmount,
     required this.paymentStatus,
     this.paymentMethod,
     required this.status,
@@ -245,6 +253,10 @@ class ServiceRequestRecord {
     this.service,
     this.items = const [],
   });
+
+  /// The payable bill: always prefers [totalAmount] (which reflects base + parts + labor)
+  /// falling back to [amount] if totalAmount is null or 0.
+  num get payableAmount => (totalAmount != null && totalAmount! > 0) ? totalAmount! : amount;
 
   /// "Full Servicing, Oil Change" — mirrors the backend's own naming.
   String get title {
@@ -262,6 +274,10 @@ class ServiceRequestRecord {
         scheduledTime: json['scheduled_time'] as String,
         notes: json['notes'] as String?,
         amount: parseNum(json['amount']),
+        baseAmount: parseNumOrNull(json['base_amount']),
+        partsCost: parseNumOrNull(json['parts_cost']),
+        laborCost: parseNumOrNull(json['labor_cost']),
+        totalAmount: parseNumOrNull(json['total_amount']),
         paymentStatus: json['payment_status'] as String? ?? '',
         paymentMethod: json['payment_method'] as String?,
         status: ServiceRequestStatusX.fromApi(json['status'] as String),
@@ -275,6 +291,34 @@ class ServiceRequestRecord {
         items: (json['items'] as List<dynamic>? ?? const [])
             .map((e) => ServiceRequestItem.fromJson(e as Map<String, dynamic>))
             .toList(),
+      );
+}
+
+/// Response returned by `POST /v1/service-requests/{id}/pay-online`.
+class ServicePayOnlineResponse {
+  final int requestId;
+  final int paymentId;
+  final num amount;
+  final String currency;
+  final String razorpayOrderId;
+  final String razorpayKeyId;
+
+  const ServicePayOnlineResponse({
+    required this.requestId,
+    required this.paymentId,
+    required this.amount,
+    required this.currency,
+    required this.razorpayOrderId,
+    required this.razorpayKeyId,
+  });
+
+  factory ServicePayOnlineResponse.fromJson(Map<String, dynamic> json) => ServicePayOnlineResponse(
+        requestId: json['request_id'] as int,
+        paymentId: json['payment_id'] is int ? json['payment_id'] as int : int.tryParse(json['payment_id'].toString()) ?? 0,
+        amount: parseNum(json['amount']),
+        currency: json['currency'] as String? ?? 'INR',
+        razorpayOrderId: json['razorpay_order_id'] as String,
+        razorpayKeyId: json['razorpay_key_id'] as String? ?? '',
       );
 }
 

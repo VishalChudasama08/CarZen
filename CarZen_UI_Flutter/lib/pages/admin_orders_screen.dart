@@ -1,5 +1,6 @@
 import 'package:carzen_flutter/models/order_models.dart';
 import 'package:carzen_flutter/pages/my_orders_screen.dart' show orderTone;
+import 'package:carzen_flutter/routes/app_routes.dart';
 import 'package:carzen_flutter/services/api_exception.dart';
 import 'package:carzen_flutter/services/order_service.dart';
 import 'package:carzen_flutter/theme/app_theme.dart';
@@ -56,7 +57,7 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
         builder: (context, setDialogState) => AlertDialog(
           title: Text('Order #${order.id}'),
           content: DropdownButtonFormField<String>(
-            value: selected,
+            initialValue: selected,
             decoration: const InputDecoration(labelText: 'Status'),
             items: _statuses.map((value) => DropdownMenuItem(value: value, child: Text(humanizeStatus(value)))).toList(),
             onChanged: (value) => setDialogState(() => selected = value ?? selected),
@@ -79,6 +80,53 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
     }
   }
 
+  Future<void> _confirmCash(OrderRecord order) async {
+    final noteCtrl = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Confirm cash for Order #${order.id}?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Amount: ${formatInr(order.amount)}'),
+            const SizedBox(height: 10),
+            TextField(
+              controller: noteCtrl,
+              decoration: const InputDecoration(labelText: 'Notes (optional)'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Confirm Cash'),
+          ),
+        ],
+      ),
+    );
+    final notes = noteCtrl.text;
+    noteCtrl.dispose();
+    if (ok != true) return;
+
+    try {
+      final payment = await _service.getOrderPayment(order.id);
+      if (payment != null) {
+        await _service.adminConfirmCash(payment.id, notes: notes);
+        if (!mounted) return;
+        showAppSnack(context, 'Cash confirmed for Order #${order.id}.');
+        await _paged.refresh();
+      } else {
+        if (!mounted) return;
+        showAppSnack(context, 'No pending cash payment row found for this order.', error: true);
+      }
+    } on ApiException catch (e) {
+      if (mounted) showAppSnack(context, e.message, error: true);
+    }
+  }
+
   Widget _chip(String label, String? value) {
     final on = _status == value;
     return Padding(
@@ -97,7 +145,11 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: const CarZenNavBar(current: NavSection.adminOrders, title: 'Orders'),
+        appBar: const CarZenNavBar(
+          current: NavSection.adminOrders,
+          title: 'Orders',
+          fallbackRoute: AppRoutes.admin,
+        ),
         bottomNavigationBar: const CarZenBottomBar(current: NavSection.adminOrders),
         body: SafeArea(
           bottom: false,
@@ -126,36 +178,50 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
               action: _status == null ? null : OutlinedButton(onPressed: () => _setStatus(null), child: const Text('Show all')),
             ),
             errorFallback: 'Could not load orders.',
-            itemBuilder: (context, order) => SurfaceCard(
-              onTap: () => _changeStatus(order),
-              child: Row(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(color: AppColors.cyanTint, borderRadius: BorderRadius.circular(AppRadii.md)),
-                    child: const Icon(Icons.receipt_long_rounded, color: AppColors.secondary),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(order.listingTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.titleMedium),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Order #${order.id} · ${formatInr(order.amount)} · Payment: ${humanizeStatus(order.paymentStatus)}',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
+            itemBuilder: (context, order) {
+              final isPaid = order.paymentStatus.toLowerCase() == 'paid';
+              return SurfaceCard(
+                onTap: () => _changeStatus(order),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(color: AppColors.cyanTint, borderRadius: BorderRadius.circular(AppRadii.md)),
+                      child: const Icon(Icons.receipt_long_rounded, color: AppColors.secondary),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  StatusPill(label: humanizeStatus(order.status), tone: orderTone(order.status)),
-                  IconButton(tooltip: 'Change status', icon: const Icon(Icons.edit_outlined), onPressed: () => _changeStatus(order)),
-                ],
-              ),
-            ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(order.listingTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.titleMedium),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Order #${order.id} · ${formatInr(order.amount)} · Payment: ${humanizeStatus(order.paymentStatus)}',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    StatusPill(label: humanizeStatus(order.status), tone: orderTone(order.status)),
+                    const SizedBox(width: 6),
+                    StatusPill(
+                      label: isPaid ? 'Paid' : 'Unpaid',
+                      tone: isPaid ? StatusTone.success : StatusTone.warning,
+                    ),
+                    if (!isPaid && order.status != 'cancelled' && order.status != 'rejected')
+                      IconButton(
+                        tooltip: 'Confirm cash payment',
+                        icon: const Icon(Icons.payments_outlined, color: AppColors.secondary),
+                        onPressed: () => _confirmCash(order),
+                      ),
+                    IconButton(tooltip: 'Change status', icon: const Icon(Icons.edit_outlined), onPressed: () => _changeStatus(order)),
+                  ],
+                ),
+              );
+            },
           ),
         ),
       );

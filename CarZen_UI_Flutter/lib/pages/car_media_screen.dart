@@ -1,18 +1,19 @@
-import 'package:carzen_flutter/widgets/carzen_nav_bar.dart';
-import 'package:carzen_flutter/widgets/content_width.dart';
-import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:carzen_flutter/config/api_config.dart';
 import 'package:carzen_flutter/models/car_models.dart';
 import 'package:carzen_flutter/models/enums.dart';
+import 'package:carzen_flutter/routes/app_routes.dart';
 import 'package:carzen_flutter/services/api_exception.dart';
 import 'package:carzen_flutter/services/car_service.dart';
 import 'package:carzen_flutter/theme/app_theme.dart';
+import 'package:carzen_flutter/widgets/carzen_nav_bar.dart';
+import 'package:carzen_flutter/widgets/content_width.dart';
 import 'package:carzen_flutter/widgets/network_photo.dart';
 import 'package:carzen_flutter/widgets/state_views.dart';
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 /// Manages one car's media — `GET/POST /v1/cars/{id}/media`,
-/// `PATCH .package:carzen_flutter/media/{mediaId}/primary`, `DELETE .package:carzen_flutter/media/{mediaId}`.
+/// `PATCH /v1/cars/{id}/media/{mediaId}/primary`, `DELETE /v1/cars/{id}/media/{mediaId}`.
 class CarMediaScreen extends StatefulWidget {
   final int carId;
   const CarMediaScreen({super.key, required this.carId});
@@ -27,6 +28,7 @@ class _CarMediaScreenState extends State<CarMediaScreen> {
 
   late Future<List<CarMedia>> _future;
   bool _uploading = false;
+  String _uploadStatus = 'Uploading...';
 
   @override
   void initState() {
@@ -37,23 +39,67 @@ class _CarMediaScreenState extends State<CarMediaScreen> {
   void _refresh() => setState(() => _future = _carService.listMedia(widget.carId));
 
   Future<void> _handleUpload() async {
-    final picked = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
-    if (picked == null) return;
-
-    setState(() => _uploading = true);
+    List<XFile> pickedFiles = [];
     try {
-      final bytes = await picked.readAsBytes();
-      await _carService.uploadMedia(
-        widget.carId,
-        fileBytes: bytes,
-        fileName: picked.name,
-        mediaType: MediaType.image,
-      );
+      pickedFiles = await _picker.pickMultiImage(imageQuality: 85);
+    } catch (_) {
+      // Fallback to single image picker if multi-select fails or isn't supported
+      final single = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+      if (single != null) pickedFiles = [single];
+    }
+
+    if (pickedFiles.isEmpty) {
+      final single = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+      if (single != null) pickedFiles = [single];
+    }
+
+    if (pickedFiles.isEmpty) return;
+
+    setState(() {
+      _uploading = true;
+      _uploadStatus = 'Uploading 1 of ${pickedFiles.length}...';
+    });
+
+    try {
+      // Check if existing car has any primary photo
+      List<CarMedia> existing = [];
+      try {
+        existing = await _future;
+      } catch (_) {}
+      bool hasPrimary = existing.any((m) => m.isPrimary);
+
+      for (int i = 0; i < pickedFiles.length; i++) {
+        if (!mounted) return;
+        setState(() {
+          _uploadStatus = 'Uploading ${i + 1} of ${pickedFiles.length}...';
+        });
+
+        final file = pickedFiles[i];
+        final bytes = await file.readAsBytes();
+        final makePrimary = !hasPrimary && i == 0;
+
+        await _carService.uploadMedia(
+          widget.carId,
+          fileBytes: bytes,
+          fileName: file.name,
+          mediaType: MediaType.image,
+          isPrimary: makePrimary,
+        );
+
+        if (makePrimary) {
+          hasPrimary = true;
+        }
+      }
+
       if (!mounted) return;
       _refresh();
+      showAppSnack(context, '${pickedFiles.length} photo${pickedFiles.length == 1 ? '' : 's'} uploaded.');
     } on ApiException catch (e) {
       if (!mounted) return;
       showAppSnack(context, e.message, error: true);
+    } catch (e) {
+      if (!mounted) return;
+      showAppSnack(context, 'Failed to upload photo: $e', error: true);
     } finally {
       if (mounted) setState(() => _uploading = false);
     }
@@ -62,7 +108,10 @@ class _CarMediaScreenState extends State<CarMediaScreen> {
   Future<void> _handleSetPrimary(int mediaId) async {
     try {
       await _carService.setPrimaryMedia(widget.carId, mediaId);
+      // Re-fetch media list from server to reflect true persisted state
       _refresh();
+      if (!mounted) return;
+      showAppSnack(context, 'Set as primary photo.');
     } on ApiException catch (e) {
       if (!mounted) return;
       showAppSnack(context, e.message, error: true);
@@ -73,6 +122,8 @@ class _CarMediaScreenState extends State<CarMediaScreen> {
     try {
       await _carService.deleteMedia(widget.carId, mediaId);
       _refresh();
+      if (!mounted) return;
+      showAppSnack(context, 'Photo deleted.');
     } on ApiException catch (e) {
       if (!mounted) return;
       showAppSnack(context, e.message, error: true);
@@ -83,58 +134,92 @@ class _CarMediaScreenState extends State<CarMediaScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: const CarZenNavBar(current: NavSection.sell, title: 'Photos & Media'),
+      appBar: const CarZenNavBar(
+        current: NavSection.sell,
+        title: 'Photos & Media',
+        fallbackRoute: AppRoutes.sell,
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _uploading ? null : _handleUpload,
         icon: _uploading
             ? const SizedBox(
-                width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.2, color: AppColors.primary))
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2.2, color: AppColors.primary),
+              )
             : const Icon(Icons.add_a_photo_outlined),
-        label: Text(_uploading ? 'Uploading...' : 'Add Photo'),
+        label: Text(_uploading ? _uploadStatus : 'Add Photos'),
+      ),
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          border: Border(top: BorderSide(color: AppColors.divider)),
+        ),
+        child: SafeArea(
+          child: Row(
+            children: [
+              OutlinedButton.icon(
+                onPressed: _uploading ? null : _handleUpload,
+                icon: const Icon(Icons.add_photo_alternate_outlined),
+                label: const Text('Add Photos'),
+              ),
+              const Spacer(),
+              FilledButton.icon(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  showAppSnack(context, 'Photos saved.');
+                },
+                icon: const Icon(Icons.check_rounded),
+                label: const Text('Save / Done'),
+              ),
+            ],
+          ),
+        ),
       ),
       body: ContentWidth(
         maxWidth: 900,
         child: SafeArea(
-        child: FutureBuilder<List<CarMedia>>(
-          future: _future,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState != ConnectionState.done) {
-              return const LoadingView(label: 'Loading media...');
-            }
-            if (snapshot.hasError) {
-              final message =
-                  snapshot.error is ApiException ? (snapshot.error as ApiException).message : 'Could not load media.';
-              return ErrorStateView(message: message, onRetry: _refresh);
-            }
-            final media = snapshot.data!;
-            if (media.isEmpty) {
-              return const EmptyStateView(
-                icon: Icons.photo_library_outlined,
-                title: 'No photos yet',
-                message: 'Add at least one photo so buyers can see your car.',
-              );
-            }
-            return GridView.builder(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                childAspectRatio: 0.85,
-              ),
-              itemCount: media.length,
-              itemBuilder: (context, index) {
-                final item = media[index];
-                return _MediaTile(
-                  media: item,
-                  onSetPrimary: () => _handleSetPrimary(item.id),
-                  onDelete: () => _handleDelete(item.id),
+          child: FutureBuilder<List<CarMedia>>(
+            future: _future,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState != ConnectionState.done) {
+                return const LoadingView(label: 'Loading media...');
+              }
+              if (snapshot.hasError) {
+                final message =
+                    snapshot.error is ApiException ? (snapshot.error as ApiException).message : 'Could not load media.';
+                return ErrorStateView(message: message, onRetry: _refresh);
+              }
+              final media = snapshot.data!;
+              if (media.isEmpty) {
+                return const EmptyStateView(
+                  icon: Icons.photo_library_outlined,
+                  title: 'No photos yet',
+                  message: 'Add at least one photo so buyers can see your car.',
                 );
-              },
-            );
-          },
+              }
+              return GridView.builder(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  mainAxisSpacing: 12,
+                  crossAxisSpacing: 12,
+                  childAspectRatio: 0.85,
+                ),
+                itemCount: media.length,
+                itemBuilder: (context, index) {
+                  final item = media[index];
+                  return _MediaTile(
+                    media: item,
+                    onSetPrimary: () => _handleSetPrimary(item.id),
+                    onDelete: () => _handleDelete(item.id),
+                  );
+                },
+              );
+            },
+          ),
         ),
-      ),
       ),
     );
   }
@@ -179,7 +264,10 @@ class _MediaTile extends StatelessWidget {
                 if (value == 'delete') onDelete();
               },
               itemBuilder: (context) => [
-                if (!media.isPrimary) const PopupMenuItem(value: 'primary', child: Text('Set as primary')),
+                if (!media.isPrimary)
+                  const PopupMenuItem(value: 'primary', child: Text('Set as primary'))
+                else
+                  const PopupMenuItem(enabled: false, value: 'primary_current', child: Text('Already primary')),
                 const PopupMenuItem(value: 'delete', child: Text('Delete')),
               ],
             ),

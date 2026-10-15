@@ -15,7 +15,6 @@ import 'package:carzen_flutter/widgets/page_container.dart';
 import 'package:carzen_flutter/widgets/paged_controller.dart';
 import 'package:carzen_flutter/widgets/pagination_bar.dart';
 import 'package:carzen_flutter/widgets/service_sheets.dart';
-import 'package:carzen_flutter/widgets/service_widgets.dart';
 import 'package:carzen_flutter/widgets/state_views.dart';
 import 'package:carzen_flutter/widgets/surface_card.dart';
 import 'package:flutter/material.dart';
@@ -232,12 +231,12 @@ class _BookServiceScreenState extends State<BookServiceScreen> {
   num get _total => _services.values.fold<num>(0, (sum, s) => sum + s.price);
 
   /// Why the form can't be submitted yet, or null when it can.
+  /// Note: In V4, address is optional.
   String? get _blocker {
     if (_services.isEmpty) return 'Choose at least one service.';
     if (_carId == null) return 'Choose the car to be serviced.';
     if (_date == null) return 'Choose a date.';
     if (_time == null) return 'Choose a time slot.';
-    if (_addressId == null) return 'Choose or add an address.';
     return null;
   }
 
@@ -255,7 +254,7 @@ class _BookServiceScreenState extends State<BookServiceScreen> {
       final request = await _requests.create(
         carId: _carId!,
         serviceIds: _services.keys.toList(),
-        addressId: _addressId!,
+        addressId: _addressId,
         date: _date!,
         time: _time!,
         notes: _notes.text,
@@ -282,7 +281,11 @@ class _BookServiceScreenState extends State<BookServiceScreen> {
     final wide = Breakpoints.isExpanded(context);
     final form = _buildForm(context);
     return Scaffold(
-      appBar: const CarZenNavBar(current: NavSection.services, title: 'Book a service'),
+      appBar: const CarZenNavBar(
+        current: NavSection.services,
+        title: 'Book a service',
+        fallbackRoute: AppRoutes.services,
+      ),
       bottomNavigationBar: wide ? null : _MobileSubmitBar(total: _total, submitting: _submitting, onSubmit: _submit),
       body: SafeArea(
         bottom: false,

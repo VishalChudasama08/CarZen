@@ -149,7 +149,11 @@ class _CarDetailsScreenState extends State<CarDetailsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: const CarZenNavBar(current: NavSection.buy, title: 'Car details'),
+      appBar: const CarZenNavBar(
+        current: NavSection.buy,
+        title: 'Car details',
+        fallbackRoute: AppRoutes.browse,
+      ),
       body: SafeArea(
         child: FutureBuilder<ListingDetail>(
           future: _future,
@@ -228,7 +232,7 @@ class _CarDetailsScreenState extends State<CarDetailsScreen> {
         Text(listing.description!, style: const TextStyle(color: AppColors.textSecondary, height: 1.6, fontSize: 15)),
       ],
       const SizedBox(height: 28),
-      _SellerCard(listing: listing),
+      _SellerCard(listing: listing, onAsk: () => _askSeller(listing)),
     ];
 
     if (Breakpoints.isExpanded(context)) {
@@ -308,49 +312,76 @@ class _SectionTitle extends StatelessWidget {
       );
 }
 
-/// What the backend actually tells us about the seller: their member id is
-/// private (only an admin or the user themself may look a user up), so the
-/// card shows the listing facts and points to in-app messaging.
+/// What the backend actually tells us about the seller. Built defensively:
+/// // TODO(Ayush): gap A — seller info for buyers (add seller summary to ListingResponseSecond)
 class _SellerCard extends StatelessWidget {
   final ListingDetail listing;
-  const _SellerCard({required this.listing});
+  final VoidCallback onAsk;
+
+  const _SellerCard({required this.listing, required this.onAsk});
 
   @override
   Widget build(BuildContext context) {
     final car = listing.car;
+    final seller = listing.seller;
+    final hasSellerData = seller != null && (seller.name != null || seller.city != null);
+
     return SurfaceCard(
       padding: const EdgeInsets.all(18),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: const BoxDecoration(color: AppColors.cyanTint, shape: BoxShape.circle),
-            child: const Icon(Icons.person_rounded, color: AppColors.secondary),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: const BoxDecoration(color: AppColors.cyanTint, shape: BoxShape.circle),
+                child: const Icon(Icons.person_rounded, color: AppColors.secondary, size: 28),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      hasSellerData && seller.name != null && seller.name!.isNotEmpty
+                          ? seller.name!
+                          : 'CarZen Verified Seller',
+                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15.5),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      [
+                        if (hasSellerData && seller.city != null) seller.city! else '${car.city}, ${car.state}',
+                        listing.listingType.label,
+                        if (hasSellerData && seller.memberSince != null) 'Member since ${seller.memberSince!}',
+                        if (!hasSellerData && car.ownershipType != null)
+                          car.ownershipType!.label
+                        else if (!hasSellerData && car.ownerCount != null)
+                          '${car.ownerCount} owner(s)',
+                      ].join(' · '),
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              OutlinedButton.icon(
+                onPressed: onAsk,
+                icon: const Icon(Icons.chat_bubble_outline_rounded, size: 16),
+                label: const Text('Ask the seller'),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(0, 40),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Listed by a CarZen member', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15.5)),
-                const SizedBox(height: 4),
-                Text(
-                  [
-                    listing.listingType.label,
-                    if (car.ownershipType != null) car.ownershipType!.label else if (car.ownerCount != null) '${car.ownerCount} owner(s)',
-                    '${car.city}, ${car.state}',
-                  ].join(' · '),
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  "Sellers' contact details stay private. Use “Ask the seller” to start a conversation, or send a purchase request.",
-                  style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.45),
-                ),
-              ],
-            ),
+          const SizedBox(height: 10),
+          const Text(
+            "Sellers' direct contact details stay private. Use “Ask the seller” to start a conversation, or send a purchase request.",
+            style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.45),
           ),
         ],
       ),

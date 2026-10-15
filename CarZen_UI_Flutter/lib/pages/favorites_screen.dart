@@ -68,7 +68,11 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const CarZenNavBar(current: NavSection.favorites, title: 'Favorites'),
+      appBar: const CarZenNavBar(
+        current: NavSection.favorites,
+        title: 'Favorites',
+        fallbackRoute: AppRoutes.browse,
+      ),
       bottomNavigationBar: const CarZenBottomBar(current: NavSection.favorites),
       body: SafeArea(
         bottom: false,

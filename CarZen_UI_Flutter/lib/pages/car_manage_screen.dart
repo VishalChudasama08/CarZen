@@ -14,6 +14,9 @@ import 'car_features_screen.dart';
 import 'car_listing_screen.dart';
 import 'car_media_screen.dart';
 
+import 'package:carzen_flutter/routes/app_routes.dart';
+import 'package:carzen_flutter/widgets/page_back_button.dart';
+
 /// Hub for a single owned car: shows its full detail (`GET /v1/cars/{id}`)
 /// and links out to editing, media, features and listing management —
 /// each of those is its own screen to keep this one simple.
@@ -74,6 +77,7 @@ class _CarManageScreenState extends State<CarManageScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: const PageBackButton(fallbackRoute: AppRoutes.sell, color: Colors.white),
         title: const Text('Manage car'),
         actions: [
           IconButton(
@@ -122,9 +126,25 @@ class _CarManageScreenState extends State<CarManageScreen> {
                         InlineError('Rejected by the CarZen team: ${car.rejectionReason}'),
                       ] else if (car.approvalStatus == CarApprovalStatus.pendingApproval) ...[
                         const SizedBox(height: 14),
-                        Text(
-                          'Waiting for the CarZen team to review this car. You can keep adding photos and features meanwhile.',
-                          style: Theme.of(context).textTheme.bodyMedium,
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: AppColors.secondary.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(AppRadii.md),
+                            border: Border.all(color: AppColors.secondary.withValues(alpha: 0.3)),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.hourglass_top_rounded, color: AppColors.secondary),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  'Waiting for admin approval. You can keep adding photos and features meanwhile. Publishing is available once approved.',
+                                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                       const SizedBox(height: AppSpacing.xl),

@@ -1,3 +1,6 @@
+// TODO(Ayush): gap D — admin users list is unpaginated (paginated client-side)
+import 'package:flutter/material.dart';
+import 'package:carzen_flutter/models/pagination.dart';
 import 'package:carzen_flutter/models/user_response.dart';
 import 'package:carzen_flutter/routes/app_routes.dart';
 import 'package:carzen_flutter/services/api_exception.dart';
@@ -7,19 +10,17 @@ import 'package:carzen_flutter/widgets/admin_user_dialogs.dart';
 import 'package:carzen_flutter/widgets/carzen_nav_bar.dart';
 import 'package:carzen_flutter/widgets/content_width.dart';
 import 'package:carzen_flutter/widgets/page_container.dart';
+import 'package:carzen_flutter/widgets/pagination_bar.dart';
 import 'package:carzen_flutter/widgets/state_views.dart';
+import 'package:carzen_flutter/widgets/surface_card.dart';
 import 'package:carzen_flutter/widgets/user_badges.dart';
-import 'package:flutter/material.dart';
 
-/// Admin user management, backed only by endpoints that exist:
+/// Admin user management.
 ///
 /// * `GET    /v1/admin/users`                    - the list
 /// * `GET    /v1/admin/users/{id}`               - details (see [AdminUserDetailScreen])
-/// * `PATCH  /v1/admin/users/{id}/role-status`   - role and status
+/// * `PATCH  /v1/admin/users/{id}/role-status`   - status (roles restricted)
 /// * `DELETE /v1/admin/users/{id}`               - delete (soft delete on the server)
-///
-/// The list endpoint returns every user and takes no query parameters, so the
-/// search box and the role/status chips filter that list on the device.
 class AdminUsersScreen extends StatefulWidget {
   const AdminUsersScreen({super.key});
 
@@ -36,9 +37,11 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
   bool _loading = true;
   Object? _error;
   String _query = '';
-  String? _roleFilter;
   String? _statusFilter;
   int? _busyId;
+
+  int _page = 1;
+  static const int _pageSize = 10;
 
   @override
   void initState() {
@@ -71,7 +74,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
         try {
           me = (await _profileService.getMe()).id;
         } on ApiException {
-          // Unknown: the row protections are then skipped and the backend still decides.
+          // Ignored
         }
       }
       if (!mounted) return;
@@ -103,7 +106,6 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
   List<UserResponse> get _filtered {
     final q = _query.trim().toLowerCase();
     return _users.where((u) {
-      if (_roleFilter != null && u.appRole != _roleFilter) return false;
       if (_statusFilter != null && u.status != _statusFilter) return false;
       if (q.isEmpty) return true;
       return u.fullName.toLowerCase().contains(q) ||
@@ -124,7 +126,11 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     if (change == null || !mounted) return;
     setState(() => _busyId = user.id);
     try {
-      final updated = await _profileService.adminUpdateRoleStatus(user.id, role: change.role, status: change.status);
+      final updated = await _profileService.adminUpdateRoleStatus(
+        user.id,
+        role: change.role,
+        status: change.status,
+      );
       if (!mounted) return;
       setState(() => _users = [for (final u in _users) u.id == updated.id ? updated : u]);
       _snack('Updated @${updated.username}.');
@@ -153,9 +159,14 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const CarZenNavBar(current: NavSection.adminUsers, title: 'Users'),
+      backgroundColor: AppColors.background,
+      appBar: const CarZenNavBar(
+        current: NavSection.adminUsers,
+        title: 'Users',
+        fallbackRoute: AppRoutes.admin,
+      ),
       bottomNavigationBar: const CarZenBottomBar(current: NavSection.adminUsers),
-      body: SafeArea(child: ContentWidth(maxWidth: 1100, child: _buildBody())),
+      body: SafeArea(child: ContentWidth(maxWidth: 1000, child: _buildBody())),
     );
   }
 
@@ -173,6 +184,17 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     }
 
     final filtered = _filtered;
+    final total = filtered.length;
+    final totalPages = (total / _pageSize).ceil();
+    final safePage = _page > (totalPages > 0 ? totalPages : 1) ? 1 : _page;
+    final pageItems = filtered.skip((safePage - 1) * _pageSize).take(_pageSize).toList();
+    final meta = PaginationMeta(
+      page: safePage,
+      limit: _pageSize,
+      total: total,
+      totalPages: totalPages > 0 ? totalPages : 1,
+    );
+
     return RefreshIndicator(
       onRefresh: () => _load(silent: true),
       child: CustomScrollView(
@@ -184,7 +206,11 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const PageHeader(title: 'Users', subtitle: 'Manage accounts, roles and access.', icon: Icons.group_rounded),
+                  const PageHeader(
+                    title: 'Users',
+                    subtitle: 'Manage platform user accounts and access status.',
+                    icon: Icons.group_rounded,
+                  ),
                   const SizedBox(height: 16),
                   _Header(users: _users),
                 ],
@@ -192,7 +218,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
             ),
           ),
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
             sliver: SliverToBoxAdapter(child: _buildFilters(filtered.length)),
           ),
           if (filtered.isEmpty)
@@ -202,29 +228,29 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                 child: EmptyStateView(
                   icon: Icons.search_off_rounded,
                   title: 'No users match',
-                  message: 'Try a different search or clear the filters.',
+                  message: 'Try a different search query or clear the status filter.',
                   action: OutlinedButton(
                     onPressed: () => setState(() {
                       _search.clear();
                       _query = '';
-                      _roleFilter = null;
                       _statusFilter = null;
+                      _page = 1;
                     }),
-                    child: const Text('Clear search and filters'),
+                    child: const Text('Clear search'),
                   ),
                 ),
               ),
             )
-          else
+          else ...[
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               sliver: SliverList.separated(
-                itemCount: filtered.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 10),
+                itemCount: pageItems.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 8),
                 itemBuilder: (context, index) {
-                  final user = filtered[index];
+                  final user = pageItems[index];
                   final isMe = user.id == _myId;
-                  return _UserCard(
+                  return _CompactUserCard(
                     user: user,
                     isMe: isMe,
                     busy: _busyId == user.id,
@@ -235,44 +261,34 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                 },
               ),
             ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+                child: PaginationBar(
+                  meta: meta,
+                  itemLabel: 'users',
+                  onPageChanged: (newPage) => setState(() => _page = newPage),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 
   Widget _buildFilters(int shown) {
-    Widget chips(String label, List<(String?, String)> options, String? selected, ValueChanged<String?> onSelected) {
-      return Wrap(
-        spacing: 8,
-        runSpacing: 4,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          Text(label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-          for (final (value, text) in options)
-            ChoiceChip(
-              label: Text(text),
-              selected: selected == value,
-              onSelected: (_) => onSelected(value),
-              showCheckmark: false,
-              selectedColor: AppColors.cyanTint,
-              labelStyle: TextStyle(
-                fontWeight: FontWeight.w700,
-                color: selected == value ? AppColors.secondary : AppColors.textPrimary,
-              ),
-              side: BorderSide(color: selected == value ? AppColors.secondary : AppColors.divider),
-            ),
-        ],
-      );
-    }
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         TextField(
           controller: _search,
-          onChanged: (value) => setState(() => _query = value),
+          onChanged: (value) => setState(() {
+            _query = value;
+            _page = 1;
+          }),
           decoration: InputDecoration(
-            hintText: 'Search name, username, email, phone or ID',
+            hintText: 'Search by name or email...',
             isDense: true,
             prefixIcon: const Icon(Icons.search_rounded),
             suffixIcon: _query.isEmpty
@@ -282,29 +298,40 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                     onPressed: () => setState(() {
                       _search.clear();
                       _query = '';
+                      _page = 1;
                     }),
                   ),
           ),
         ),
         const SizedBox(height: 10),
-        chips(
-          'Role',
-          const [(null, 'All'), ('user', 'Users'), ('admin', 'Admins')],
-          _roleFilter,
-          (v) => setState(() => _roleFilter = v),
-        ),
-        chips(
-          'Status',
-          const [(null, 'All'), ('active', 'Active'), ('inactive', 'Inactive'), ('blocked', 'Blocked')],
-          _statusFilter,
-          (v) => setState(() => _statusFilter = v),
-        ),
-        Padding(
-          padding: const EdgeInsets.only(top: 6),
-          child: Text(
-            'Showing $shown of ${_users.length} users',
-            style: const TextStyle(color: AppColors.textSecondary, fontSize: 12.5),
-          ),
+        Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            const Text('Status:', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+            for (final (value, text) in const [
+              (null, 'All'),
+              ('active', 'Active'),
+              ('inactive', 'Inactive'),
+              ('blocked', 'Blocked')
+            ])
+              ChoiceChip(
+                label: Text(text),
+                selected: _statusFilter == value,
+                onSelected: (_) => setState(() {
+                  _statusFilter = value;
+                  _page = 1;
+                }),
+                showCheckmark: false,
+                selectedColor: AppColors.cyanTint,
+                labelStyle: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: _statusFilter == value ? AppColors.secondary : AppColors.textPrimary,
+                ),
+                side: BorderSide(color: _statusFilter == value ? AppColors.secondary : AppColors.divider),
+              ),
+          ],
         ),
       ],
     );
@@ -317,50 +344,71 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    int count(bool Function(UserResponse) test) => users.where(test).length;
-    final stats = <(String, int, IconData)>[
-      ('Total users', users.length, Icons.group_outlined),
-      ('Active', count((u) => u.status == 'active'), Icons.check_circle_outline_rounded),
-      ('Inactive', count((u) => u.status == 'inactive'), Icons.pause_circle_outline_rounded),
-      ('Blocked', count((u) => u.status == 'blocked'), Icons.block_rounded),
-      ('Admins', count((u) => u.isAdmin), Icons.shield_outlined),
-    ];
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
+    final active = users.where((u) => u.isActive && !u.isBlocked).length;
+    final blocked = users.where((u) => u.isBlocked).length;
+
+    return Row(
       children: [
-        for (final (label, value, icon) in stats)
-          Container(
-            width: 150,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(AppRadii.md),
-              border: Border.all(color: AppColors.divider),
-              boxShadow: AppShadows.card,
-            ),
-            child: Row(
-              children: [
-                Icon(icon, color: AppColors.secondary),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('$value', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
-                      Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+        Expanded(
+          child: _Metric(
+            label: 'Total users',
+            value: users.length,
+            icon: Icons.people_outline_rounded,
           ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _Metric(
+            label: 'Active',
+            value: active,
+            icon: Icons.check_circle_outline_rounded,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _Metric(
+            label: 'Blocked',
+            value: blocked,
+            icon: Icons.block_rounded,
+          ),
+        ),
       ],
     );
   }
 }
 
-class _UserCard extends StatelessWidget {
+class _Metric extends StatelessWidget {
+  final String label;
+  final int value;
+  final IconData icon;
+
+  const _Metric({required this.label, required this.value, required this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    return SurfaceCard(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      child: Row(
+        children: [
+          Icon(icon, color: AppColors.secondary, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('$value', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
+                Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 11.5)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Compact user row: Name only + status pill, whole row tappable, View button.
+class _CompactUserCard extends StatelessWidget {
   final UserResponse user;
   final bool isMe;
   final bool busy;
@@ -368,7 +416,7 @@ class _UserCard extends StatelessWidget {
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
 
-  const _UserCard({
+  const _CompactUserCard({
     required this.user,
     required this.isMe,
     required this.busy,
@@ -379,82 +427,70 @@ class _UserCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final avatar = CircleAvatar(
-      radius: 22,
-      backgroundColor: AppColors.primary,
-      child: Text(user.initials, style: const TextStyle(color: AppColors.cyan, fontWeight: FontWeight.w800)),
-    );
-    final info = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(user.fullName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-        const SizedBox(height: 2),
-        Text('@${user.username}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12.5)),
-        Text(user.email, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12.5)),
-        if (user.phoneNumber != null && user.phoneNumber!.isNotEmpty)
-          Text(user.phoneNumber!, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12.5)),
-      ],
-    );
-    final badges = Wrap(
-      spacing: 6,
-      runSpacing: 6,
-      children: [RoleBadge(user: user), StatusBadge(status: user.status), if (isMe) const YouBadge()],
-    );
-    final actions = busy
-        ? const Padding(
-            padding: EdgeInsets.all(10),
-            child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.secondary)),
-          )
-        : Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextButton(onPressed: onView, child: const Text('View')),
+    return SurfaceCard(
+      onTap: onView,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 18,
+            backgroundColor: AppColors.primary,
+            child: Text(
+              user.initials,
+              style: const TextStyle(color: AppColors.cyan, fontWeight: FontWeight.w800, fontSize: 12),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Row(
+              children: [
+                Flexible(
+                  child: Text(
+                    user.fullName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                  ),
+                ),
+                if (isMe) ...[
+                  const SizedBox(width: 8),
+                  const YouBadge(),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          StatusBadge(status: user.status),
+          const SizedBox(width: 10),
+          if (busy)
+            const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.secondary),
+            )
+          else ...[
+            FilledButton.tonal(
+              onPressed: onView,
+              style: FilledButton.styleFrom(
+                minimumSize: const Size(60, 36),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+              ),
+              child: const Text('View', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            ),
+            if (onEdit != null)
               IconButton(
-                tooltip: isMe ? 'Use Profile to edit your own account' : 'Edit role and status',
-                icon: const Icon(Icons.edit_outlined),
+                tooltip: 'Change status',
+                icon: const Icon(Icons.edit_outlined, size: 18),
                 onPressed: onEdit,
               ),
+            if (onDelete != null)
               IconButton(
-                tooltip: isMe ? 'You cannot delete your own account here' : 'Delete user',
-                icon: Icon(Icons.delete_outline_rounded, color: onDelete == null ? null : AppColors.favorite),
+                tooltip: 'Delete user',
+                icon: const Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.favorite),
                 onPressed: onDelete,
               ),
-            ],
-          );
-
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadii.lg),
-        border: Border.all(color: AppColors.divider),
-        boxShadow: AppShadows.card,
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          if (constraints.maxWidth >= 640) {
-            return Row(
-              children: [
-                avatar,
-                const SizedBox(width: 14),
-                Expanded(child: info),
-                const SizedBox(width: 12),
-                SizedBox(width: 150, child: badges),
-                const SizedBox(width: 8),
-                actions,
-              ],
-            );
-          }
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(children: [avatar, const SizedBox(width: 12), Expanded(child: info)]),
-              const SizedBox(height: 10),
-              badges,
-              Align(alignment: Alignment.centerRight, child: actions),
-            ],
-          );
-        },
+          ],
+        ],
       ),
     );
   }

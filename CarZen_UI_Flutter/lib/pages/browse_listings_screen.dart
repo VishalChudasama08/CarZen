@@ -146,7 +146,7 @@ class _BrowseListingsScreenState extends State<BrowseListingsScreen> {
       );
       // The page no longer exists (listings were removed meanwhile): go to the last real one.
       if (result.data.isEmpty && page > 1 && result.pagination.totalPages < page) {
-        return _load(page: result.pagination.totalPages < 1 ? 1 : result.pagination.totalPages);
+        return await _load(page: result.pagination.totalPages < 1 ? 1 : result.pagination.totalPages);
       }
       // The list endpoint omits the car snapshot, so each card's detail is fetched.
       final details = await _marketplaceService.expandWithCarDetails(result.data);

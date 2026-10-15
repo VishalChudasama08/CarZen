@@ -1,3 +1,5 @@
+import 'package:carzen_flutter/utils/slugs.dart';
+
 /// Route names / path builders. Paths are real URLs on Flutter Web, so every
 /// screen below can be opened (and refreshed) directly from the address bar.
 class AppRoutes {
@@ -10,10 +12,14 @@ class AppRoutes {
   static const String favorites = '/favorites';
   static const String orders = '/orders';
   static const String profile = '/profile';
+  static const String profileEdit = '/profile/edit';
+  static const String profilePassword = '/profile/password';
+  static const String profileMyCars = '/profile/my-cars';
   static const String services = '/services';
   static const String login = '/Login';
   static const String register = '/Register';
   static const String inquiries = '/inquiries';
+  static const String messages = '/messages';
   static const String notifications = '/notifications';
   static const String admin = '/admin';
   static const String adminCars = '/admin/cars';
@@ -25,20 +31,22 @@ class AppRoutes {
   static const String serviceRequests = '/services/requests';
   static const String serviceHistory = '/services/history';
 
-  static String carDetails(int listingId) => '/cars/$listingId';
+  /// Human-readable car details route: `/cars/{title-slug}-{id}`.
+  /// If title is omitted or blank, falls back to `/cars/car-{id}`.
+  static String carDetails(int listingId, [String? title]) =>
+      '/cars/${Slugs.buildCarSlug(listingId, title)}';
 
   static String inquiry(int inquiryId) => '/inquiries/$inquiryId';
 
   static String adminUser(int userId) => '/admin/users/$userId';
 
-  static String serviceRequest(int requestId) => '/services/requests/$requestId';
+  /// Readable service request URL: `/services/requests/request-{id}`.
+  static String serviceRequest(int requestId) =>
+      '/services/requests/${Slugs.buildServiceRequestRef(requestId)}';
 
-  /// `/services/book?ids=1,2` — the service ids to pre-select in the booking form.
-  static String bookServices(Iterable<int> serviceIds) {
-    final ids = serviceIds.toList();
-    if (ids.isEmpty) return serviceBook;
-    return Uri(path: serviceBook, queryParameters: {'ids': ids.join(',')}).toString();
-  }
+  /// Clean `/services/book` URL without query parameters. Preselected IDs
+  /// are passed via RouteSettings.arguments.
+  static String bookServices([Iterable<int>? serviceIds]) => serviceBook;
 
   /// `/cars?brandId=3&fuelType=diesel...` — only non-null filters are added.
   static String browseWith({

@@ -1,3 +1,4 @@
+// SECURITY (Ayush): rotate the exposed Razorpay key secret
 import 'package:carzen_flutter/models/car_models.dart';
 import 'package:carzen_flutter/models/enums.dart';
 import 'package:carzen_flutter/models/pagination.dart';
@@ -6,9 +7,7 @@ import 'package:carzen_flutter/utils/formatters.dart';
 import 'api_client.dart';
 
 /// Talks to `service_requests.py` and `services.py` (history).
-///
-/// Payment routes (`pay-online`, `verify-online`, `confirm-cash`) exist on the
-/// backend but are intentionally NOT wrapped here: payment is out of scope.
+/// Includes V4 payment methods (`pay-online`, `verify-online`, `pay-cash`, `confirm-cash`).
 class ServiceRequestApi {
   ServiceRequestApi({ApiClient? client}) : _client = client ?? ApiClient();
   final ApiClient _client;
@@ -60,13 +59,11 @@ class ServiceRequestApi {
 
   /// `POST /v1/service-requests` (`ServiceRequestCreate`).
   ///
-  /// `scheduled_time` is `HH:mm:ss`. The backend reads `address_id` whenever
-  /// the request is created and fails if it is missing, so the booking form
-  /// always sends one.
+  /// `scheduled_time` is `HH:mm:ss`. In V4, `address_id` is optional.
   Future<ServiceRequestRecord> create({
     required int carId,
     required List<int> serviceIds,
-    required int addressId,
+    int? addressId,
     required DateTime date,
     required String time,
     String? notes,
@@ -74,7 +71,7 @@ class ServiceRequestApi {
     final json = await _client.post('/service-requests', body: {
       'car_id': carId,
       'service_ids': serviceIds,
-      'address_id': addressId,
+      if (addressId != null) 'address_id': addressId,
       'scheduled_date': toApiDate(date),
       'scheduled_time': time,
       if (notes != null && notes.trim().isNotEmpty) 'notes': notes.trim(),
@@ -98,6 +95,41 @@ class ServiceRequestApi {
 
   Future<ServiceRequestRecord> cancel(int id, {String? notes}) async {
     final json = await _client.post('/service-requests/$id/cancel', body: {
+      if (notes != null && notes.trim().isNotEmpty) 'notes': notes.trim(),
+    });
+    return ServiceRequestRecord.fromJson(json as Map<String, dynamic>);
+  }
+
+  // ---- Service Request Payments ----
+
+  /// `POST /v1/service-requests/{id}/pay-online`
+  /// Creates a Razorpay order for `total_amount`. Returns `{request_id, payment_id, amount, currency, razorpay_order_id, razorpay_key_id}`.
+  Future<ServicePayOnlineResponse> payOnline(int id) async {
+    final json = await _client.post('/service-requests/$id/pay-online');
+    return ServicePayOnlineResponse.fromJson(json as Map<String, dynamic>);
+  }
+
+  /// `POST /v1/service-requests/{id}/verify-online`
+  /// Body: `{razorpay_order_id, razorpay_payment_id, razorpay_signature}`.
+  /// On success returns the full `ServiceRequestResponse` with `payment_status="paid"`, `payment_method="online"`.
+  Future<ServiceRequestRecord> verifyOnline(
+    int id, {
+    required String razorpayOrderId,
+    required String razorpayPaymentId,
+    required String razorpaySignature,
+  }) async {
+    final json = await _client.post('/service-requests/$id/verify-online', body: {
+      'razorpay_order_id': razorpayOrderId,
+      'razorpay_payment_id': razorpayPaymentId,
+      'razorpay_signature': razorpaySignature,
+    });
+    return ServiceRequestRecord.fromJson(json as Map<String, dynamic>);
+  }
+
+  /// `POST /v1/service-requests/{id}/pay-cash`
+  /// Sets `payment_method="cash"` without marking the request paid.
+  Future<ServiceRequestRecord> payCash(int id, {String? notes}) async {
+    final json = await _client.post('/service-requests/$id/pay-cash', body: {
       if (notes != null && notes.trim().isNotEmpty) 'notes': notes.trim(),
     });
     return ServiceRequestRecord.fromJson(json as Map<String, dynamic>);
@@ -176,6 +208,13 @@ class ServiceRequestApi {
       });
 
   Future<ServiceRequestRecord> adminCancel(int id, {String? notes}) => _adminAction(id, 'cancel', body: {
+        if (notes != null && notes.trim().isNotEmpty) 'notes': notes.trim(),
+      });
+
+  /// `POST /v1/admin/service-requests/{id}/confirm-cash`
+  /// Marks `payment_status="paid"`, `payment_method="cash"` and creates a cash payment row.
+  Future<ServiceRequestRecord> adminConfirmCash(int id, {String? notes}) =>
+      _adminAction(id, 'confirm-cash', body: {
         if (notes != null && notes.trim().isNotEmpty) 'notes': notes.trim(),
       });
 

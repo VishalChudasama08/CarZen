@@ -51,7 +51,6 @@ class _LabeledField extends StatelessWidget {
   final String? hint;
   final TextInputType keyboardType;
   final String? Function(String?)? validator;
-  final int maxLines;
 
   const _LabeledField({
     required this.label,
@@ -59,7 +58,6 @@ class _LabeledField extends StatelessWidget {
     this.hint,
     this.keyboardType = TextInputType.text,
     this.validator,
-    this.maxLines = 1,
   });
 
   @override
@@ -75,7 +73,7 @@ class _LabeledField extends StatelessWidget {
             controller: controller,
             keyboardType: keyboardType,
             validator: validator,
-            maxLines: maxLines,
+            maxLines: 1,
             autovalidateMode: AutovalidateMode.onUserInteraction,
             decoration: InputDecoration(hintText: hint),
           ),

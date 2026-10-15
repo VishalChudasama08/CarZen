@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 /// Central configuration for talking to the CarZen backend.
 ///
 /// Keeping the base URL here (instead of scattered across service files)
@@ -6,27 +8,27 @@
 class ApiConfig {
   ApiConfig._();
 
-  /// Base URL of the backend API.
-  /// NOTE: `127.0.0.1` only works when running on the same machine as the
-  /// backend (e.g. web, desktop, or an emulator with port-forwarding). On a
-  /// physical device or the Android emulator, replace this with your
-  /// machine's LAN IP (or `10.0.2.2` for the Android emulator).
-  ///
-  /// Override at build/run time without touching code, e.g.
-  ///   flutter run -d chrome --dart-define=API_BASE_URL=http://127.0.0.1:8000
-  ///   flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000   (Android emulator)
-  static const String baseUrl = String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue: 'http://127.0.0.1:8000',
-  );
+  static const String _envBaseUrl = String.fromEnvironment('API_BASE_URL');
 
-  static const String registerEndpoint = '$baseUrl/v1/auth/register';
-  static const String loginEndpoint = '$baseUrl/v1/auth/login';
-  static const String validateEndpoint = '$baseUrl/v1/auth/validate';
+  /// Base URL of the backend API.
+  /// Platform-aware: uses --dart-define=API_BASE_URL if set;
+  /// otherwise defaults to http://10.0.2.2:8085 on Android (emulator)
+  /// and http://127.0.0.1:8085 on web/desktop/iOS.
+  static String get baseUrl {
+    if (_envBaseUrl.isNotEmpty) return _envBaseUrl;
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      return 'http://10.0.2.2:8085';
+    }
+    return 'http://127.0.0.1:8085';
+  }
+
+  static String get registerEndpoint => '$baseUrl/v1/auth/register';
+  static String get loginEndpoint => '$baseUrl/v1/auth/login';
+  static String get validateEndpoint => '$baseUrl/v1/auth/validate';
 
   /// Convenience prefix for every other `/v1/...` endpoint added by the
   /// car/catalog/marketplace/user services.
-  static const String v1 = '$baseUrl/v1';
+  static String get v1 => '$baseUrl/v1';
 
   static const Duration requestTimeout = Duration(seconds: 15);
 }

@@ -354,6 +354,10 @@ class ServiceRequestCard extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               StatusPill(label: r.status.label, tone: r.status.tone),
+              if (r.status != ServiceRequestStatus.cancelled && r.status != ServiceRequestStatus.rejected) ...[
+                const SizedBox(width: 6),
+                servicePaymentPill(r),
+              ],
             ],
           ),
           const SizedBox(height: 14),
@@ -364,7 +368,7 @@ class ServiceRequestCard extends StatelessWidget {
               _Meta(Icons.event_rounded, '${formatDate(r.scheduledDate)} · ${formatClock(r.scheduledTime)}'),
               if (r.car != null) _Meta(Icons.directions_car_outlined, r.car!.label),
               if (showCustomer && r.user != null) _Meta(Icons.person_outline_rounded, r.user!.displayName),
-              _Meta(Icons.currency_rupee_rounded, formatInr(r.amount)),
+              _Meta(Icons.currency_rupee_rounded, formatInr(r.payableAmount)),
             ],
           ),
           if (footer != null) ...[const SizedBox(height: 12), footer!],
@@ -392,7 +396,27 @@ class _Meta extends StatelessWidget {
   }
 }
 
-/// Informational payment line. Deliberately not a button: payment is not part of this app.
+/// Small payment pill indicating payment status and method for a service request.
+Widget servicePaymentPill(ServiceRequestRecord r) {
+  if (r.status == ServiceRequestStatus.cancelled || r.status == ServiceRequestStatus.rejected) {
+    return const SizedBox.shrink();
+  }
+  if (r.paymentStatus.toLowerCase() == 'paid') {
+    final method = r.paymentMethod?.toLowerCase() == 'online'
+        ? 'Paid · Online'
+        : (r.paymentMethod?.toLowerCase() == 'cash' ? 'Paid · Cash' : 'Paid');
+    return StatusPill(label: method, tone: StatusTone.success);
+  }
+  if (r.status == ServiceRequestStatus.completed) {
+    return const StatusPill(label: 'Payment due', tone: StatusTone.danger);
+  }
+  if (r.paymentMethod?.toLowerCase() == 'cash') {
+    return const StatusPill(label: 'Cash pending', tone: StatusTone.info);
+  }
+  return const StatusPill(label: 'Unpaid', tone: StatusTone.warning);
+}
+
+/// Informational payment line.
 String paymentInfo(ServiceRequestRecord r) {
   final status = humanizeStatus(r.paymentStatus);
   if (r.paymentMethod == null || r.paymentMethod!.isEmpty) return status;

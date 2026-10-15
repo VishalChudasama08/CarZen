@@ -1,5 +1,6 @@
 import 'package:carzen_flutter/models/car_models.dart';
 import 'package:carzen_flutter/models/enums.dart';
+import 'package:carzen_flutter/routes/app_routes.dart';
 import 'package:carzen_flutter/services/api_exception.dart';
 import 'package:carzen_flutter/services/car_service.dart';
 import 'package:carzen_flutter/theme/app_theme.dart';
@@ -75,7 +76,11 @@ class _MyCarsScreenState extends State<MyCarsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const CarZenNavBar(current: NavSection.sell, title: 'Sell Car'),
+      appBar: const CarZenNavBar(
+        current: NavSection.sell,
+        title: 'Sell Car',
+        fallbackRoute: AppRoutes.home,
+      ),
       bottomNavigationBar: const CarZenBottomBar(current: NavSection.sell),
       floatingActionButton: _sellingUnavailable
           ? null

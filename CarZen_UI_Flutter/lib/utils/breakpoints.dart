@@ -17,4 +17,8 @@ class Breakpoints {
 
   static bool isExpanded(BuildContext context) => MediaQuery.sizeOf(context).width >= expanded;
   static bool isCompact(BuildContext context) => MediaQuery.sizeOf(context).width < medium;
+  static bool isMedium(BuildContext context) {
+    final w = MediaQuery.sizeOf(context).width;
+    return w >= medium && w < expanded;
+  }
 }

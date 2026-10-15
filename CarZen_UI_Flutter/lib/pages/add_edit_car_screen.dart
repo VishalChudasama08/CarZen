@@ -1,3 +1,4 @@
+import 'package:carzen_flutter/routes/app_routes.dart';
 import 'package:carzen_flutter/widgets/carzen_nav_bar.dart';
 import 'package:carzen_flutter/widgets/content_width.dart';
 import 'package:flutter/material.dart';
@@ -224,7 +225,11 @@ class _AddEditCarScreenState extends State<AddEditCarScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: CarZenNavBar(current: NavSection.sell, title: _isEditing ? 'Edit Car' : 'Add Car'),
+      appBar: CarZenNavBar(
+        current: NavSection.sell,
+        title: _isEditing ? 'Edit Car' : 'Add Car',
+        fallbackRoute: AppRoutes.sell,
+      ),
       body: ContentWidth(
         maxWidth: 720,
         child: SafeArea(

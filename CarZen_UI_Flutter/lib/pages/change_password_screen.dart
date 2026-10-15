@@ -1,3 +1,4 @@
+import 'package:carzen_flutter/routes/app_routes.dart';
 import 'package:carzen_flutter/widgets/carzen_nav_bar.dart';
 import 'package:carzen_flutter/widgets/state_views.dart';
 import 'package:carzen_flutter/widgets/content_width.dart';
@@ -63,7 +64,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: const CarZenNavBar(current: NavSection.profile, title: 'Change Password'),
+      appBar: const CarZenNavBar(current: NavSection.profile, title: 'Change Password', fallbackRoute: AppRoutes.profile),
       body: ContentWidth(
         maxWidth: 560,
         child: SafeArea(
@@ -74,6 +75,19 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Text(
+                  'Change your password',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Keep your account secure by choosing a strong password.',
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                ),
+                const SizedBox(height: 20),
                 if (_errorMessage != null) AuthErrorBanner(message: _errorMessage!),
                 AuthTextField(
                   controller: _currentController,

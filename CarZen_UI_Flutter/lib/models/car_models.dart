@@ -165,7 +165,7 @@ class OwnerSummary {
         lastName: json['last_name'] as String?,
         username: json['username'] as String,
       );
-  String get fullName => [firstName, lastName].where((e) => e != null && e!.isNotEmpty).join(' ');
+  String get fullName => [firstName, lastName].where((e) => e != null && e.isNotEmpty).join(' ');
 }
 
 /// Mirrors `CarResponse` — the shape returned by `POST /v1/cars`,

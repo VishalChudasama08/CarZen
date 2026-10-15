@@ -1,5 +1,7 @@
+import 'package:carzen_flutter/routes/app_routes.dart';
 import 'package:carzen_flutter/widgets/carzen_nav_bar.dart';
 import 'package:carzen_flutter/widgets/content_width.dart';
+import 'package:carzen_flutter/widgets/state_views.dart';
 import 'package:flutter/material.dart';
 import 'package:carzen_flutter/models/user_response.dart';
 import 'package:carzen_flutter/services/api_exception.dart';
@@ -14,8 +16,8 @@ import 'package:carzen_flutter/widgets/primary_button.dart';
 /// `PATCH /v1/users/update/me` for users and `PATCH /v1/admin/update/me` for
 /// admins (`UserUpdateProfile`, all fields optional).
 class EditProfileScreen extends StatefulWidget {
-  final UserResponse user;
-  const EditProfileScreen({super.key, required this.user});
+  final UserResponse? user;
+  const EditProfileScreen({super.key, this.user});
 
   @override
   State<EditProfileScreen> createState() => _EditProfileScreenState();
@@ -25,12 +27,51 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   final _profileService = ProfileService();
 
-  late final _firstNameController = TextEditingController(text: widget.user.firstName);
-  late final _lastNameController = TextEditingController(text: widget.user.lastName ?? '');
-  late final _phoneController = TextEditingController(text: widget.user.phoneNumber ?? '');
+  UserResponse? _user;
+  bool _isLoading = true;
+  late final TextEditingController _firstNameController;
+  late final TextEditingController _lastNameController;
+  late final TextEditingController _phoneController;
 
   bool _isSaving = false;
   String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.user != null) {
+      _user = widget.user;
+      _initControllers();
+      _isLoading = false;
+    } else {
+      _loadMe();
+    }
+  }
+
+  void _initControllers() {
+    _firstNameController = TextEditingController(text: _user?.firstName ?? '');
+    _lastNameController = TextEditingController(text: _user?.lastName ?? '');
+    _phoneController = TextEditingController(text: _user?.phoneNumber ?? '');
+  }
+
+  Future<void> _loadMe() async {
+    try {
+      final me = await _profileService.getMe();
+      if (!mounted) return;
+      setState(() {
+        _user = me;
+        _initControllers();
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = e is ApiException ? e.message : 'Could not load profile.';
+        _isLoading = false;
+        _initControllers();
+      });
+    }
+  }
 
   Future<void> _handleSave() async {
     if (!_formKey.currentState!.validate()) return;
@@ -44,7 +85,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         'last_name': _lastNameController.text.trim().isEmpty ? null : _lastNameController.text.trim(),
         'phone_number': _phoneController.text.trim().isEmpty ? null : _phoneController.text.trim(),
       };
-      if (widget.user.isAdmin) {
+      if (_user?.isAdmin == true) {
         await _profileService.adminUpdateOwnProfile(fields);
       } else {
         await _profileService.updateMe(fields);
@@ -60,9 +101,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   @override
   void dispose() {
-    _firstNameController.dispose();
-    _lastNameController.dispose();
-    _phoneController.dispose();
+    if (!_isLoading) {
+      _firstNameController.dispose();
+      _lastNameController.dispose();
+      _phoneController.dispose();
+    }
     super.dispose();
   }
 
@@ -70,17 +113,32 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: const CarZenNavBar(current: NavSection.profile, title: 'Edit Profile'),
+      appBar: const CarZenNavBar(current: NavSection.profile, title: 'Edit Profile', fallbackRoute: AppRoutes.profile),
       body: ContentWidth(
         maxWidth: 560,
         child: SafeArea(
-        child: SingleChildScrollView(
+          child: _isLoading
+              ? const LoadingView(label: 'Loading profile...')
+              : SingleChildScrollView(
           padding: const EdgeInsets.all(20),
           child: Form(
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Text(
+                  'Edit your information',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Update your personal profile details below.',
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                ),
+                const SizedBox(height: 20),
                 if (_errorMessage != null) AuthErrorBanner(message: _errorMessage!),
                 AuthTextField(
                   controller: _firstNameController,

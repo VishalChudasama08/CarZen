@@ -137,11 +137,49 @@ class ListingCar {
   }
 }
 
+/// Summary of seller returned if backend adds `seller` to ListingResponseSecond.
+/// // TODO(Ayush): gap A — seller info for buyers
+class SellerSummary {
+  final int? id;
+  final String? name;
+  final String? city;
+  final String? memberSince;
+  final String? email;
+  final String? phone;
+
+  const SellerSummary({
+    this.id,
+    this.name,
+    this.city,
+    this.memberSince,
+    this.email,
+    this.phone,
+  });
+
+  factory SellerSummary.fromJson(Map<String, dynamic> json) {
+    final firstName = json['first_name'] as String?;
+    final lastName = json['last_name'] as String?;
+    final fullName = (firstName != null)
+        ? ((lastName != null && lastName.isNotEmpty) ? '$firstName $lastName' : firstName)
+        : (json['name'] as String? ?? json['username'] as String?);
+    return SellerSummary(
+      id: json['id'] as int?,
+      name: fullName,
+      city: json['city'] as String?,
+      memberSince: json['created_at']?.toString() ?? json['member_since']?.toString(),
+      email: json['email'] as String?,
+      phone: json['phone'] as String?,
+    );
+  }
+}
+
 /// Mirrors `ListingResponseSecond` — returned by the *public*
 /// `GET /v1/listings/{id}` detail endpoint. Includes the full [ListingCar]
 /// snapshot, unlike the plain [Listing] used in the list view.
 class ListingDetail extends Listing {
   final ListingCar car;
+  // TODO(Ayush): gap A — seller info for buyers
+  final SellerSummary? seller;
 
   const ListingDetail({
     required super.id,
@@ -155,21 +193,26 @@ class ListingDetail extends Listing {
     required super.listingStatus,
     super.viewsCount,
     required this.car,
+    this.seller,
   });
 
-  factory ListingDetail.fromJson(Map<String, dynamic> json) => ListingDetail(
-        id: json['id'] as int,
-        carId: json['car_id'] as int,
-        sellerId: json['seller_id'] as int,
-        listingType: ListingTypeX.fromApi(json['listing_type'] as String),
-        title: json['title'] as String,
-        description: json['description'] as String?,
-        askingPrice: parseNum(json['asking_price']),
-        negotiable: json['negotiable'] as bool? ?? true,
-        listingStatus: ListingStatusX.fromApi(json['listing_status'] as String),
-        viewsCount: json['views_count'] as int?,
-        car: ListingCar.fromJson(json['car'] as Map<String, dynamic>),
-      );
+  factory ListingDetail.fromJson(Map<String, dynamic> json) {
+    final sellerJson = json['seller'] as Map<String, dynamic>? ?? json['seller_info'] as Map<String, dynamic>?;
+    return ListingDetail(
+      id: json['id'] as int,
+      carId: json['car_id'] as int,
+      sellerId: json['seller_id'] as int,
+      listingType: ListingTypeX.fromApi(json['listing_type'] as String),
+      title: json['title'] as String,
+      description: json['description'] as String?,
+      askingPrice: parseNum(json['asking_price']),
+      negotiable: json['negotiable'] as bool? ?? true,
+      listingStatus: ListingStatusX.fromApi(json['listing_status'] as String),
+      viewsCount: json['views_count'] as int?,
+      car: ListingCar.fromJson(json['car'] as Map<String, dynamic>),
+      seller: sellerJson != null ? SellerSummary.fromJson(sellerJson) : null,
+    );
+  }
 }
 
 /// Mirrors `FavoriteResponse` (`/v1/cars/{id}/favorite`, `/v1/users/me/favorites`).
