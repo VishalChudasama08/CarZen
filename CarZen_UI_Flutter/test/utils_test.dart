@@ -49,7 +49,8 @@ void main() {
     });
 
     test('details and inquiry paths', () {
-      expect(AppRoutes.carDetails(7), '/cars/7');
+      expect(AppRoutes.carDetails(7), '/cars/car-7');
+      expect(AppRoutes.carDetails(7, 'Toyota Camry'), '/cars/toyota-camry-7');
       expect(AppRoutes.inquiry(2), '/inquiries/2');
     });
   });
