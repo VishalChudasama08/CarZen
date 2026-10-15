@@ -1,4 +1,4 @@
 CarZen_Backend_Python/backend/.env
 CarZen_Backend_Python/backend/.env.example
-__pycache__/
-*.pyc
+__pycache__/*
+!__pycache__/.gitkeep
