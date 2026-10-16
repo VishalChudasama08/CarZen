@@ -1,0 +1,501 @@
+import 'package:carzen_flutter/models/catalog_models.dart';
+import 'package:carzen_flutter/models/enums.dart';
+import 'package:carzen_flutter/models/listing_filters.dart';
+import 'package:carzen_flutter/models/listing_models.dart';
+import 'package:carzen_flutter/models/pagination.dart';
+import 'package:carzen_flutter/routes/app_routes.dart';
+import 'package:carzen_flutter/services/api_exception.dart';
+import 'package:carzen_flutter/services/auth_gate.dart';
+import 'package:carzen_flutter/services/auth_service.dart';
+import 'package:carzen_flutter/services/catalog_service.dart';
+import 'package:carzen_flutter/services/marketplace_service.dart';
+import 'package:carzen_flutter/theme/app_theme.dart';
+import 'package:carzen_flutter/utils/breakpoints.dart';
+import 'package:carzen_flutter/utils/formatters.dart';
+import 'package:carzen_flutter/widgets/carzen_nav_bar.dart';
+import 'package:carzen_flutter/widgets/listing_card.dart';
+import 'package:carzen_flutter/widgets/listing_filter_panel.dart';
+import 'package:carzen_flutter/widgets/network_photo.dart';
+import 'package:carzen_flutter/widgets/pagination_bar.dart';
+import 'package:carzen_flutter/widgets/state_views.dart';
+import 'package:flutter/material.dart';
+
+/// Public browsing: search, every filter and sort `GET /v1/listings`
+/// supports, paged results and favorites. No login needed to browse.
+class BrowseListingsScreen extends StatefulWidget {
+  final int? brandId;
+  final String? fuelType;
+  final String? transmission;
+  final num? minPrice;
+  final num? maxPrice;
+  final String? search;
+  final String title;
+
+  const BrowseListingsScreen({
+    super.key,
+    this.brandId,
+    this.fuelType,
+    this.transmission,
+    this.minPrice,
+    this.maxPrice,
+    this.search,
+    this.title = 'Explore Cars',
+  });
+
+  @override
+  State<BrowseListingsScreen> createState() => _BrowseListingsScreenState();
+}
+
+class _BrowseListingsScreenState extends State<BrowseListingsScreen> {
+  static const int _pageSize = 12;
+
+  final _marketplaceService = MarketplaceService();
+  final _catalogService = CatalogService();
+  final _authService = AuthService();
+  final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+
+  late ListingFilters _filters;
+  List<CatalogBrand> _brands = const [];
+  final List<ListingDetail> _listings = [];
+  Set<int> _favoriteCarIds = {};
+
+  int _page = 1;
+  PaginationMeta? _meta;
+  bool _loading = true;
+  Object? _error;
+  int _requestId = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _filters = ListingFilters(
+      search: (widget.search ?? '').trim().isEmpty ? null : widget.search!.trim(),
+      brandId: widget.brandId,
+      fuelType: _matchName(FuelType.values, widget.fuelType),
+      transmission: _matchName(TransmissionType.values, widget.transmission),
+      minPrice: widget.minPrice,
+      maxPrice: widget.maxPrice,
+    );
+    _searchController.text = _filters.search ?? '';
+    _loadBrands();
+    _loadFavorites();
+    _load(page: 1);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  T? _matchName<T extends Enum>(List<T> values, String? name) {
+    if (name == null) return null;
+    for (final value in values) {
+      if (value.name == name) return value;
+    }
+    return null;
+  }
+
+  Future<void> _loadBrands() async {
+    try {
+      final page = await _catalogService.listBrands(limit: 100, isActive: true);
+      if (mounted) setState(() => _brands = page.data);
+    } on ApiException {
+      // Filtering by brand is optional; the rest of the page still works.
+    }
+  }
+
+  Future<void> _loadFavorites() async {
+    if (!await _authService.hasStoredToken()) return;
+    try {
+      final favorites = await _marketplaceService.listFavorites();
+      if (mounted) setState(() => _favoriteCarIds = favorites.map((f) => f.carId).toSet());
+    } on ApiException {
+      // Hearts simply stay empty.
+    }
+  }
+
+  /// Loads one page of `GET /v1/listings` for the current search, filters and
+  /// sort. Changing the page only changes [page]; everything else is kept.
+  Future<void> _load({required int page}) async {
+    final requestId = ++_requestId;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final f = _filters;
+      final result = await _marketplaceService.listPublicListings(
+        page: page,
+        limit: _pageSize,
+        search: f.search,
+        brandId: f.brandId,
+        modelId: f.modelId,
+        fuelType: f.fuelType,
+        transmission: f.transmission,
+        condition: f.condition,
+        minPrice: f.minPrice,
+        maxPrice: f.maxPrice,
+        minYear: f.minYear,
+        maxYear: f.maxYear,
+        maxMileage: f.maxMileage,
+        city: f.city,
+        sortBy: f.sort,
+      );
+      // The page no longer exists (listings were removed meanwhile): go to the last real one.
+      if (result.data.isEmpty && page > 1 && result.pagination.totalPages < page) {
+        return await _load(page: result.pagination.totalPages < 1 ? 1 : result.pagination.totalPages);
+      }
+      // The list endpoint omits the car snapshot, so each card's detail is fetched.
+      final details = await _marketplaceService.expandWithCarDetails(result.data);
+      if (!mounted || requestId != _requestId) return;
+      setState(() {
+        _listings
+          ..clear()
+          ..addAll(details);
+        _page = result.pagination.page;
+        _meta = result.pagination;
+        _loading = false;
+      });
+    } catch (error) {
+      if (!mounted || requestId != _requestId) return;
+      setState(() {
+        _error = error;
+        _loading = false;
+      });
+    }
+  }
+
+  void _goToPage(int page) {
+    _load(page: page);
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(0, duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
+    }
+  }
+
+  void _applyFilters(ListingFilters filters) {
+    setState(() => _filters = filters.withSearch(_filters.search).withSort(_filters.sort));
+    _load(page: 1);
+  }
+
+  void _submitSearch(String value) {
+    setState(() => _filters = _filters.withSearch(value));
+    _load(page: 1);
+  }
+
+  Future<void> _toggleFavorite(int carId, bool wantFavorite) async {
+    if (!await AuthGate.requireAuthenticated(context) || !mounted) return;
+    try {
+      if (wantFavorite) {
+        await _marketplaceService.addFavorite(carId);
+      } else {
+        await _marketplaceService.removeFavorite(carId);
+      }
+      if (!mounted) return;
+      setState(() {
+        final ids = {..._favoriteCarIds};
+        wantFavorite ? ids.add(carId) : ids.remove(carId);
+        _favoriteCarIds = ids;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      showAppSnack(context, e.message, error: true);
+    }
+  }
+
+  void _openFilterSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      backgroundColor: AppColors.surface,
+      builder: (sheetContext) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.9,
+        maxChildSize: 0.95,
+        builder: (context, controller) {
+          final isNarrow = Breakpoints.isNarrow(context);
+          return SingleChildScrollView(
+            controller: controller,
+            padding: EdgeInsets.fromLTRB(isNarrow ? 12 : 20, 0, isNarrow ? 12 : 20, 24),
+            child: ListingFilterPanel(
+              initial: _filters,
+              brands: _brands,
+              onApply: (filters) {
+                Navigator.of(sheetContext).pop();
+                _applyFilters(filters);
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: CarZenNavBar(current: NavSection.buy, title: widget.title),
+      bottomNavigationBar: const CarZenBottomBar(current: NavSection.buy),
+      body: SafeArea(
+        bottom: false,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final wide = constraints.maxWidth >= Breakpoints.expanded;
+            final results = _buildResults(wide);
+            if (!wide) return results;
+            return Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1400),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: 310,
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(24, 20, 12, 32),
+                        child: Container(
+                          padding: const EdgeInsets.all(18),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(AppRadii.lg),
+                            border: Border.all(color: AppColors.divider),
+                          ),
+                          child: ListingFilterPanel(initial: _filters, brands: _brands, onApply: _applyFilters),
+                        ),
+                      ),
+                    ),
+                    Expanded(child: results),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildResults(bool wide) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _Toolbar(
+          controller: _searchController,
+          sort: _filters.sort,
+          activeFilters: _filters.activeCount,
+          showFilterButton: !wide,
+          onSubmitted: _submitSearch,
+          onClearSearch: () {
+            _searchController.clear();
+            _submitSearch('');
+          },
+          onSort: (sort) {
+            setState(() => _filters = _filters.withSort(sort));
+            _load(page: 1);
+          },
+          onOpenFilters: _openFilterSheet,
+        ),
+        Expanded(child: _buildBody()),
+      ],
+    );
+  }
+
+  /// "Showing 13–24 of 56 cars" with the active search spelled out, so the
+  /// count always explains what the list is.
+  String _summary() {
+    final meta = _meta;
+    if (meta == null) return '';
+    if (meta.total == 0) return 'No cars found';
+    final first = (meta.page - 1) * meta.limit + 1;
+    final last = meta.page * meta.limit > meta.total ? meta.total : meta.page * meta.limit;
+    final base = meta.totalPages <= 1
+        ? '${formatCount(meta.total)} car${meta.total == 1 ? '' : 's'} found'
+        : 'Showing ${formatCount(first)}–${formatCount(last)} of ${formatCount(meta.total)} cars';
+    final search = _filters.search;
+    return search == null ? base : '$base for "$search"';
+  }
+
+  Widget _buildBody() {
+    if (_loading && _listings.isEmpty) {
+      return const SingleChildScrollView(padding: EdgeInsets.all(16), child: SkeletonGrid(count: 6, tileHeight: 360));
+    }
+    if (_error != null && _listings.isEmpty) {
+      return ApiErrorView(error: _error!, onRetry: () => _load(page: _page), fallback: 'Could not load cars.');
+    }
+    if (_listings.isEmpty) {
+      return EmptyStateView(
+        icon: Icons.search_off_rounded,
+        title: 'No cars match',
+        message: 'Try removing a filter or searching for something broader.',
+        action: (_filters.activeCount > 0 || _filters.search != null)
+            ? OutlinedButton(
+                onPressed: () {
+                  _searchController.clear();
+                  setState(() => _filters = ListingFilters(sort: _filters.sort));
+                  _load(page: 1);
+                },
+                child: const Text('Clear search and filters'),
+              )
+            : null,
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: () => _load(page: _page),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          const spacing = 16.0;
+          final horizontalPadding = AppSpacing.pageGutter(constraints.maxWidth);
+          final available = constraints.maxWidth - horizontalPadding * 2;
+          final columns = (available / 270).floor().clamp(1, 4);
+          final cardWidth = (available - spacing * (columns - 1)) / columns;
+          return SingleChildScrollView(
+            controller: _scrollController,
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.fromLTRB(horizontalPadding, 4, horizontalPadding, 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Text(_summary(), style: const TextStyle(color: AppColors.textSecondary, fontSize: 13.5, fontWeight: FontWeight.w600)),
+                ),
+                if (_loading) const Padding(padding: EdgeInsets.only(bottom: 12), child: LinearProgressIndicator(minHeight: 3)),
+                if (_error != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: InlineError(_error is ApiException ? (_error as ApiException).message : 'Could not load this page.'),
+                  ),
+                Wrap(
+                  spacing: spacing,
+                  runSpacing: spacing,
+                  children: [
+                    for (final listing in _listings)
+                      ListingCard(
+                        listing: listing,
+                        width: cardWidth,
+                        isFavorite: _favoriteCarIds.contains(listing.car.id),
+                        onFavoriteToggle: (value) => _toggleFavorite(listing.car.id, value),
+                        onTap: () => Navigator.of(context).pushNamed(AppRoutes.carDetails(listing.id)),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 28),
+                PaginationBar(meta: _meta, busy: _loading, itemLabel: 'cars', onPageChanged: _goToPage),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _Toolbar extends StatelessWidget {
+  final TextEditingController controller;
+  final ListingSort sort;
+  final int activeFilters;
+  final bool showFilterButton;
+  final ValueChanged<String> onSubmitted;
+  final VoidCallback onClearSearch;
+  final ValueChanged<ListingSort> onSort;
+  final VoidCallback onOpenFilters;
+
+  const _Toolbar({
+    required this.controller,
+    required this.sort,
+    required this.activeFilters,
+    required this.showFilterButton,
+    required this.onSubmitted,
+    required this.onClearSearch,
+    required this.onSort,
+    required this.onOpenFilters,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isNarrow = Breakpoints.isNarrow(context);
+    final sortMenu = PopupMenuButton<ListingSort>(
+      tooltip: 'Sort',
+      initialValue: sort,
+      onSelected: onSort,
+      itemBuilder: (_) => [
+        for (final option in ListingSort.values) PopupMenuItem<ListingSort>(value: option, child: Text(option.label)),
+      ],
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: isNarrow ? 10 : 14, vertical: 14),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          border: Border.all(color: AppColors.divider),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.swap_vert_rounded, size: 20),
+            if (!showFilterButton) ...[
+              const SizedBox(width: 6),
+              Text(sort.label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+            ],
+          ],
+        ),
+      ),
+    );
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(isNarrow ? 10 : 16, isNarrow ? 10 : 16, isNarrow ? 10 : 16, 12),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: controller,
+              textInputAction: TextInputAction.search,
+              onSubmitted: onSubmitted,
+              style: TextStyle(fontSize: isNarrow ? 13.5 : 15),
+              decoration: InputDecoration(
+                hintText: isNarrow ? 'Search...' : 'Search brand, model or variant',
+                hintStyle: TextStyle(fontSize: isNarrow ? 13 : 14),
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(horizontal: isNarrow ? 8 : 12, vertical: 10),
+                prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                suffixIcon: ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: controller,
+                  builder: (_, value, __) => value.text.isEmpty
+                      ? const SizedBox.shrink()
+                      : IconButton(icon: const Icon(Icons.close_rounded, size: 18), onPressed: onClearSearch),
+                ),
+              ),
+            ),
+          ),
+          SizedBox(width: isNarrow ? 6 : 10),
+          sortMenu,
+          if (showFilterButton) ...[
+            SizedBox(width: isNarrow ? 6 : 10),
+            Badge(
+              isLabelVisible: activeFilters > 0,
+              label: Text('$activeFilters'),
+              child: isNarrow
+                  ? OutlinedButton(
+                      onPressed: onOpenFilters,
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                        minimumSize: const Size(42, 48),
+                      ),
+                      child: const Icon(Icons.tune_rounded, size: 20),
+                    )
+                  : OutlinedButton.icon(
+                      onPressed: onOpenFilters,
+                      icon: const Icon(Icons.tune_rounded, size: 20),
+                      label: const Text('Filters'),
+                    ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
