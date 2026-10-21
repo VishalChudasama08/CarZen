@@ -1,0 +1,17 @@
+{
+    "name": "CarZen - Buy, sell and service cars",
+    "short_name": "CarZen",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#F2F4F7",
+    "theme_color": "#0F1C2E",
+    "description": "Buy and sell checked used cars, check what your car is worth, and book workshop services.",
+    "orientation": "any",
+    "prefer_related_applications": false,
+    "icons": [
+        { "src": "icons/Icon-192.png", "sizes": "192x192", "type": "image/png" },
+        { "src": "icons/Icon-512.png", "sizes": "512x512", "type": "image/png" },
+        { "src": "icons/Icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+        { "src": "icons/Icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    ]
+}
