@@ -1,18 +1,7 @@
 from enum import Enum
 
 
-class CaseInsensitiveEnum(str, Enum):
-    @classmethod
-    def _missing_(cls, value):
-        if isinstance(value, str):
-            val = value.lower()
-            for member in cls:
-                if member.value.lower() == val or member.name.lower() == val:
-                    return member
-        return None
-
-
-class OrderStatus(CaseInsensitiveEnum):
+class OrderStatus(str, Enum):
     PENDING = "pending"
     CONFIRMED = "confirmed"
     PROCESSING = "processing"
@@ -21,7 +10,7 @@ class OrderStatus(CaseInsensitiveEnum):
     REJECTED = "rejected"
 
 
-class NotificationType(CaseInsensitiveEnum):
+class NotificationType(str, Enum):
     ORDER = "order"
     PAYMENT = "payment"
     LISTING = "listing"

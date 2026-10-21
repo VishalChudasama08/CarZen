@@ -28,17 +28,11 @@ pwd_context = CryptContext(
     deprecated="auto",
 )
 
-import bcrypt
+def hash_password(password:str)->str:
+    return pwd_context.hash(password)
 
-def hash_password(password: str) -> str:
-    salt = bcrypt.gensalt()
-    return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    try:
-        return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
-    except Exception:
-        return False
+def verify_password(plain_password:str,hashed_password: str)->bool:
+    return pwd_context.verify(plain_password,hashed_password)
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()

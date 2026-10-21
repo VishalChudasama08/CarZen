@@ -63,7 +63,7 @@ def get_address_by_id(db: Session,address_id: int,owner: User) -> Address :
     return query 
 
 def update_address(db:Session,address_id:int,owner:User,value:dict):
-    address = get_address_by_id(db,owner,address_id)
+    address = get_address_by_id(db,address_id,owner)
     
     if address is None:
        raise LookupError("Address Not Found.")

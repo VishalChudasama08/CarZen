@@ -12,7 +12,9 @@ from app.schemas.users_schema import MessageResponse
 router = APIRouter()
 
 def _raise(exc: Exception):
-    if isinstance(exc, LookupError) and "not among the defined enum values" not in str(exc):
+    if isinstance(exc, HTTPException):
+        raise exc
+    elif isinstance(exc, LookupError) and "not among the defined enum values" not in str(exc):
         code = status.HTTP_404_NOT_FOUND
     elif isinstance(exc, PermissionError): 
         code = status.HTTP_403_FORBIDDEN

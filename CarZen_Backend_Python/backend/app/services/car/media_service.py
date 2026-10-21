@@ -8,8 +8,7 @@ from sqlalchemy.orm import Session
 from app.models.car_media import CarMedia
 from app.models.enums.CarEnums import MediaType
 
-_DEFAULT_UPLOAD_DIR = (Path(__file__).resolve().parents[3] / "uploads" / "cars").resolve()
-UPLOAD_ROOT = Path(os.getenv("CAR_MEDIA_UPLOAD_DIR", str(_DEFAULT_UPLOAD_DIR)))
+UPLOAD_ROOT = Path(os.getenv("CAR_MEDIA_UPLOAD_DIR", "uploads/cars"))
 MAX_FILE_SIZE = int(os.getenv("CAR_MEDIA_MAX_BYTES", str(20 * 1024 * 1024)))
 MAX_MEDIA_PER_CAR = int(os.getenv("CAR_MEDIA_MAX_COUNT", "20"))
 ALLOWED_EXTENSIONS = {MediaType.IMAGE: {".jpg", ".jpeg", ".png", ".webp"}, MediaType.VIDEO: {".mp4", ".webm", ".mov"}}

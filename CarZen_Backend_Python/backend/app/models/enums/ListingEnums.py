@@ -1,23 +1,12 @@
 from enum import Enum
 
 
-class CaseInsensitiveEnum(str, Enum):
-    @classmethod
-    def _missing_(cls, value):
-        if isinstance(value, str):
-            val = value.lower()
-            for member in cls:
-                if member.value.lower() == val or member.name.lower() == val:
-                    return member
-        return None
-
-
-class ListingType(CaseInsensitiveEnum):
+class ListingType(str, Enum):
     SALE = "sale"
     RESALE = "resale"
 
 
-class ListingStatus(CaseInsensitiveEnum):
+class ListingStatus(str, Enum):
     DRAFT = "draft"
     PENDING_REVIEW = "pending_review"
     APPROVED = "approved"
@@ -31,7 +20,7 @@ class ListingStatus(CaseInsensitiveEnum):
     SUSPENDED = "suspended"
 
 
-class ListingSort(CaseInsensitiveEnum):
+class ListingSort(str, Enum):
     NEWEST = "newest"
     PRICE_LOW_TO_HIGH = "price_low_to_high"
     PRICE_HIGH_TO_LOW = "price_high_to_low"

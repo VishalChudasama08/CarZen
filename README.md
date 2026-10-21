@@ -223,6 +223,7 @@ The included database dump ([carzen_db_v5_new.sql](carzen_db_v5_new.sql)) comes 
 2. **Create and activate a virtual environment**:
    ```bash
    # Windows (PowerShell)
+   Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
    python -m venv .venv
    .\.venv\Scripts\Activate.ps1
 

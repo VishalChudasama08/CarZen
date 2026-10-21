@@ -1,18 +1,7 @@
 from enum import Enum
 
 
-class CaseInsensitiveEnum(str, Enum):
-    @classmethod
-    def _missing_(cls, value):
-        if isinstance(value, str):
-            val = value.lower()
-            for member in cls:
-                if member.value.lower() == val or member.name.lower() == val:
-                    return member
-        return None
-
-
-class PaymentMethod(CaseInsensitiveEnum):
+class PaymentMethod(str, Enum):
     CASH = "cash"
     UPI = "upi"
     CARD = "card"
@@ -21,7 +10,7 @@ class PaymentMethod(CaseInsensitiveEnum):
     OTHER = "other"
 
 
-class PaymentStatus(CaseInsensitiveEnum):
+class PaymentStatus(str, Enum):
     PENDING = "pending"
     PARTIAL = "partial"
     PAID = "paid"
@@ -30,14 +19,14 @@ class PaymentStatus(CaseInsensitiveEnum):
     UNPAID = "unpaid"
 
 
-class TransactionStatus(CaseInsensitiveEnum):
+class TransactionStatus(str, Enum):
     INITIATED = "initiated"
     COMPLETED = "completed"
     CANCELLED = "cancelled"
     FAILED = "failed"
 
 
-class GatewayPaymentStatus(CaseInsensitiveEnum):
+class GatewayPaymentStatus(str, Enum):
     """Lifecycle states for an individual gateway payment attempt."""
 
     PENDING = "pending"
