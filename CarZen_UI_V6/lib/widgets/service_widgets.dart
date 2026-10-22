@@ -392,15 +392,17 @@ class ServiceRequestCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          Wrap(
-            spacing: 18,
-            runSpacing: 8,
-            children: [
-              _Meta(Icons.event_rounded, '${formatDate(r.scheduledDate)}  |  ${formatClock(r.scheduledTime)}'),
-              if (r.car != null) _Meta(Icons.directions_car_outlined, r.car!.label),
-              if (showCustomer && r.user != null) _Meta(Icons.person_outline_rounded, r.user!.displayName),
-              _Meta(Icons.currency_rupee_rounded, formatInr(r.payableAmount)),
-            ],
+          LayoutBuilder(
+            builder: (context, c) => Wrap(
+              spacing: 18,
+              runSpacing: 8,
+              children: [
+                _Meta(Icons.event_rounded, '${formatDate(r.scheduledDate)}  |  ${formatClock(r.scheduledTime)}', maxWidth: c.maxWidth),
+                if (r.car != null) _Meta(Icons.directions_car_outlined, r.car!.label, maxWidth: c.maxWidth),
+                if (showCustomer && r.user != null) _Meta(Icons.person_outline_rounded, r.user!.displayName, maxWidth: c.maxWidth),
+                _Meta(Icons.currency_rupee_rounded, formatInr(r.payableAmount), maxWidth: c.maxWidth),
+              ],
+            ),
           ),
           if (footer != null) ...[const SizedBox(height: 12), footer!],
         ],
@@ -412,18 +414,30 @@ class ServiceRequestCard extends StatelessWidget {
 class _Meta extends StatelessWidget {
   final IconData icon;
   final String text;
-  const _Meta(this.icon, this.text);
+  final double? maxWidth;
+  const _Meta(this.icon, this.text, {this.maxWidth});
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    final row = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, size: 16, color: AppColors.textSecondary),
         const SizedBox(width: 5),
-        Flexible(child: Text(text, style: const TextStyle(fontSize: 13, color: AppColors.textPrimary, fontWeight: FontWeight.w600))),
+        Flexible(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 13, color: AppColors.textPrimary, fontWeight: FontWeight.w600),
+          ),
+        ),
       ],
     );
+    if (maxWidth != null) {
+      return ConstrainedBox(constraints: BoxConstraints(maxWidth: maxWidth!), child: row);
+    }
+    return row;
   }
 }
 

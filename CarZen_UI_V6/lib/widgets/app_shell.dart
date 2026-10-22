@@ -493,8 +493,8 @@ class _AccountMenu extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(user.fullName, style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.ink, fontSize: 14.5)),
-                  Text(user.email, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12.5)),
+                  Text(user.fullName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.ink, fontSize: 14.5)),
+                  Text(user.email, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12.5)),
                 ],
               ),
             ),

@@ -375,7 +375,10 @@ class _BrowseListingsScreenState extends State<BrowseListingsScreen> {
                     children: [
                       for (final c in chips)
                         InputChip(
-                          label: Text(c.$1),
+                          label: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 220),
+                            child: Text(c.$1, maxLines: 1, overflow: TextOverflow.ellipsis),
+                          ),
                           onDeleted: () {
                             if (c.$2.search == null) _searchController.clear();
                             _setFilters(c.$2);

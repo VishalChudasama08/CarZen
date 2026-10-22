@@ -11,6 +11,7 @@ import 'package:carzen_flutter/widgets/auth_layout.dart';
 import 'package:carzen_flutter/widgets/auth_text_field.dart';
 import 'package:carzen_flutter/widgets/primary_button.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class LoginPage extends StatefulWidget {
   /// When opened by a protected action, return `true` so that action can
@@ -27,6 +28,7 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _passwordFocusNode = FocusNode();
   final _authService = AuthService();
 
   bool _isLoading = false;
@@ -56,6 +58,7 @@ class _LoginPageState extends State<LoginPage> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _passwordFocusNode.dispose();
     super.dispose();
   }
 
@@ -72,6 +75,7 @@ class _LoginPageState extends State<LoginPage> {
     try {
       await _authService.login(email: _emailController.text.trim(), password: _passwordController.text);
       if (!mounted) return;
+      TextInput.finishAutofillContext(shouldSave: true);
       await SessionController.instance.refresh();
       if (!mounted) return;
       if (widget.returnToPrevious) {
@@ -84,7 +88,29 @@ class _LoginPageState extends State<LoginPage> {
         (route) => false,
       );
     } on AuthException catch (e) {
-      if (mounted) setState(() => _errorMessage = e.message);
+      TextInput.finishAutofillContext(shouldSave: false);
+      if (mounted) {
+        setState(() => _errorMessage = e.message);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _passwordFocusNode.canRequestFocus) {
+            _passwordFocusNode.requestFocus();
+            _passwordController.selection = TextSelection(
+              baseOffset: 0,
+              extentOffset: _passwordController.text.length,
+            );
+          }
+        });
+      }
+    } catch (_) {
+      TextInput.finishAutofillContext(shouldSave: false);
+      if (mounted) {
+        setState(() => _errorMessage = 'Something went wrong. Please check your connection and try again.');
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _passwordFocusNode.canRequestFocus) {
+            _passwordFocusNode.requestFocus();
+          }
+        });
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -116,10 +142,12 @@ class _LoginPageState extends State<LoginPage> {
                   icon: Icons.mail_outline,
                   keyboardType: TextInputType.emailAddress,
                   autofillHints: const [AutofillHints.email, AutofillHints.username],
+                  enabled: !_isLoading,
                   validator: Validators.email,
                 ),
                 AuthTextField(
                   controller: _passwordController,
+                  focusNode: _passwordFocusNode,
                   label: 'Password',
                   required: true,
                   hint: 'Your password',
@@ -127,6 +155,7 @@ class _LoginPageState extends State<LoginPage> {
                   isPassword: true,
                   textInputAction: TextInputAction.done,
                   autofillHints: const [AutofillHints.password],
+                  enabled: !_isLoading,
                   onSubmitted: (_) => _handleLogin(),
                   validator: (v) => Validators.required(v, message: 'Enter your password'),
                 ),

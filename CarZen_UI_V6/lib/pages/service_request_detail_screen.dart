@@ -436,7 +436,7 @@ class _ServiceRequestDetailScreenState extends State<ServiceRequestDetailScreen>
                     children: [
                       Icon(Icons.payments_outlined, color: AppColors.secondary, size: 22),
                       SizedBox(width: 8),
-                      Text('Cash Payment Pending', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5)),
+                      Expanded(child: Text('Cash Payment Pending', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5))),
                     ],
                   ),
                   const SizedBox(height: 6),

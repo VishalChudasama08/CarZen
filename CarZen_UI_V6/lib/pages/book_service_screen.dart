@@ -631,7 +631,7 @@ class _StepCard extends StatelessWidget {
                 child: Text('$number', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13)),
               ),
               const SizedBox(width: 10),
-              Text(title, style: Theme.of(context).textTheme.titleMedium),
+              Expanded(child: Text(title, style: Theme.of(context).textTheme.titleMedium)),
             ],
           ),
           const SizedBox(height: 16),

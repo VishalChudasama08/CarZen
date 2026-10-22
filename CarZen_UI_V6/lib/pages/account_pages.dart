@@ -728,6 +728,7 @@ class TransactionTile extends StatelessWidget {
               Expanded(
                 child: Text(t.listingTitle ?? 'Car #${t.carId}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15.5)),
               ),
+              const SizedBox(width: 8),
               Text(formatInr(t.finalPrice), style: AppText.price(16)),
             ],
           ),

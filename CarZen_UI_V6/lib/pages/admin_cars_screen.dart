@@ -447,13 +447,22 @@ class _Facts extends StatelessWidget {
           if (car.features.isNotEmpty) ...[
             const SizedBox(height: 16),
             const SectionTitle('Features'),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final f in car.features)
-                  Chip(label: Text(f.featureValue == null || f.featureValue!.isEmpty ? f.featureName : '${f.featureName}: ${f.featureValue}')),
-              ],
+            LayoutBuilder(
+              builder: (context, c) => Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final f in car.features)
+                    ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: c.maxWidth),
+                      child: Chip(
+                        label: Text(
+                          f.featureValue == null || f.featureValue!.isEmpty ? f.featureName : '${f.featureName}: ${f.featureValue}',
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ],
         ],

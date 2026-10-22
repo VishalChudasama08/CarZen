@@ -376,16 +376,24 @@ class _RequestSheetState extends State<_RequestSheet> {
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 4),
                   child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SizedBox(
-                        width: 140,
+                        width: 120,
                         child: Text('Payment', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
                       ),
-                      servicePaymentPill(r),
-                      if (r.paymentMethod != null && r.paymentMethod!.isNotEmpty) ...[
-                        const SizedBox(width: 8),
-                        Text('(${r.paymentMethod!})', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                      ],
+                      Expanded(
+                        child: Wrap(
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 8,
+                          runSpacing: 4,
+                          children: [
+                            servicePaymentPill(r),
+                            if (r.paymentMethod != null && r.paymentMethod!.isNotEmpty)
+                              Text('(${r.paymentMethod!})', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -536,8 +544,8 @@ class _ScheduleDialogState extends State<_ScheduleDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text('Schedule request #${widget.request.id}'),
-      content: SizedBox(
-        width: 460,
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 460),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -664,8 +672,8 @@ class _CompleteDialogState extends State<_CompleteDialog> {
 
     return AlertDialog(
       title: Text('Complete request #${widget.request.id}'),
-      content: SizedBox(
-        width: 460,
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 460),
         child: SingleChildScrollView(
           child: Form(
             key: _formKey,

@@ -445,8 +445,8 @@ class _ServiceFormDialogState extends State<_ServiceFormDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text(_editing ? 'Edit service' : 'New service'),
-      content: SizedBox(
-        width: 480,
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 480),
         child: SingleChildScrollView(
           child: Form(
             key: _formKey,

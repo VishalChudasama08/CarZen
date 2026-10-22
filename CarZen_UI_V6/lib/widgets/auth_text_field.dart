@@ -12,7 +12,7 @@ class AuthTextField extends StatefulWidget {
   final IconData? icon;
   final bool isPassword;
   final bool required;
-  final TextInputType keyboardType;
+  final TextInputType? keyboardType;
   final TextInputAction textInputAction;
   final String? Function(String?)? validator;
   final AutovalidateMode autovalidateMode;
@@ -26,6 +26,7 @@ class AuthTextField extends StatefulWidget {
   final Widget? suffix;
   final TextCapitalization textCapitalization;
   final List<TextInputFormatter>? inputFormatters;
+  final FocusNode? focusNode;
 
   const AuthTextField({
     super.key,
@@ -35,7 +36,7 @@ class AuthTextField extends StatefulWidget {
     this.icon,
     this.isPassword = false,
     this.required = false,
-    this.keyboardType = TextInputType.text,
+    this.keyboardType,
     this.textInputAction = TextInputAction.next,
     this.validator,
     this.autovalidateMode = AutovalidateMode.onUserInteraction,
@@ -49,6 +50,7 @@ class AuthTextField extends StatefulWidget {
     this.suffix,
     this.textCapitalization = TextCapitalization.none,
     this.inputFormatters,
+    this.focusNode,
   });
 
   @override
@@ -64,6 +66,12 @@ class _AuthTextFieldState extends State<AuthTextField> {
     final rawLabel = widget.label;
     final required = widget.required || rawLabel.endsWith(' *');
     final label = rawLabel.replaceAll(' *', '');
+
+    final effectiveKeyboardType = widget.keyboardType ??
+        (widget.isPassword
+            ? TextInputType.visiblePassword
+            : (widget.maxLines > 1 ? TextInputType.multiline : TextInputType.text));
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Column(
@@ -73,10 +81,11 @@ class _AuthTextFieldState extends State<AuthTextField> {
           const SizedBox(height: 6),
           TextFormField(
             controller: widget.controller,
+            focusNode: widget.focusNode,
             obscureText: widget.isPassword && _obscure,
             enableSuggestions: !widget.isPassword,
             autocorrect: !widget.isPassword,
-            keyboardType: widget.maxLines > 1 ? TextInputType.multiline : widget.keyboardType,
+            keyboardType: effectiveKeyboardType,
             textInputAction: widget.maxLines > 1 ? TextInputAction.newline : widget.textInputAction,
             validator: widget.validator,
             autovalidateMode: widget.autovalidateMode,
@@ -100,7 +109,15 @@ class _AuthTextFieldState extends State<AuthTextField> {
                   ? IconButton(
                       tooltip: _obscure ? 'Show password' : 'Hide password',
                       icon: Icon(_obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined, size: 20),
-                      onPressed: () => setState(() => _obscure = !_obscure),
+                      onPressed: () {
+                        final sel = widget.controller.selection;
+                        setState(() => _obscure = !_obscure);
+                        if (sel.isValid) {
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (mounted) widget.controller.selection = sel;
+                          });
+                        }
+                      },
                     )
                   : widget.suffix,
             ),

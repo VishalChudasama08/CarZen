@@ -13,6 +13,7 @@ import 'package:carzen_flutter/widgets/auth_text_field.dart';
 import 'package:carzen_flutter/widgets/primary_button.dart';
 import 'package:carzen_flutter/widgets/state_views.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -75,17 +76,23 @@ class _RegisterPageState extends State<RegisterPage> {
       // Sign the new account in straight away.
       try {
         await _authService.login(email: email, password: password);
+        TextInput.finishAutofillContext(shouldSave: true);
         await SessionController.instance.refresh();
         if (!mounted) return;
         showAppSnack(context, 'Welcome to CarZen, ${user.firstName}.');
         Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (r) => false);
       } on AuthException {
+        TextInput.finishAutofillContext(shouldSave: true);
         if (!mounted) return;
         showAppSnack(context, 'Account created. Log in to continue.');
         Navigator.pushReplacementNamed(context, AppRoutes.login);
       }
     } on AuthException catch (e) {
+      TextInput.finishAutofillContext(shouldSave: false);
       if (mounted) setState(() => _errorMessage = e.message);
+    } catch (_) {
+      TextInput.finishAutofillContext(shouldSave: false);
+      if (mounted) setState(() => _errorMessage = 'Something went wrong. Please try again.');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

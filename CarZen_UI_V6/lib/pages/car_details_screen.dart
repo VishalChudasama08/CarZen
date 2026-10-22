@@ -599,32 +599,39 @@ class _KeyFacts extends StatelessWidget {
     ];
     return LayoutBuilder(
       builder: (context, c) {
-        final cols = c.maxWidth >= 640 ? 5 : (c.maxWidth >= 420 ? 3 : 2);
-        final w = (c.maxWidth - (cols - 1) * 1) / cols;
+        // Outer Container has a 1px border on left and right (total 2px).
+        final innerWidth = c.maxWidth - 2.0;
+        final cols = innerWidth >= 640 ? 5 : (innerWidth >= 420 ? 3 : 2);
+        const spacing = 1.0;
+        final w = ((innerWidth - (cols - 1) * spacing) / cols).floorToDouble();
         return Container(
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: AppColors.divider,
             borderRadius: BorderRadius.circular(AppRadii.lg),
             border: Border.all(color: AppColors.divider),
           ),
           clipBehavior: Clip.antiAlias,
           child: Wrap(
-            spacing: 1,
-            runSpacing: 1,
+            spacing: spacing,
+            runSpacing: spacing,
             children: [
-              for (final f in facts)
+              for (var i = 0; i < facts.length; i++)
                 Container(
-                  width: w,
+                  width: (cols == 2 && i == facts.length - 1)
+                      ? innerWidth
+                      : (cols == 3 && i >= 3)
+                          ? ((innerWidth - spacing) / 2).floorToDouble()
+                          : w,
                   color: AppColors.surface,
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(f.$1, size: 20, color: AppColors.textSecondary),
+                      Icon(facts[i].$1, size: 20, color: AppColors.textSecondary),
                       const SizedBox(height: 8),
-                      Text(f.$2, style: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary)),
+                      Text(facts[i].$2, style: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary)),
                       const SizedBox(height: 2),
-                      Text(f.$3, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                      Text(facts[i].$3, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
                     ],
                   ),
                 ),
@@ -693,32 +700,46 @@ class _FeatureList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: [
-        for (final f in features)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(AppRadii.sm),
-              border: Border.all(color: AppColors.divider),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.check, size: 16, color: AppColors.success),
-                const SizedBox(width: 8),
-                Text.rich(TextSpan(children: [
-                  TextSpan(text: f.featureName, style: const TextStyle(fontWeight: FontWeight.w600)),
-                  if (f.featureValue != null && f.featureValue!.isNotEmpty)
-                    TextSpan(text: '  ${f.featureValue}', style: const TextStyle(color: AppColors.textSecondary)),
-                ]), style: const TextStyle(fontSize: 14)),
-              ],
-            ),
-          ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            for (final f in features)
+              Container(
+                constraints: BoxConstraints(maxWidth: constraints.maxWidth),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(AppRadii.sm),
+                  border: Border.all(color: AppColors.divider),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.only(top: 2),
+                      child: Icon(Icons.check, size: 16, color: AppColors.success),
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text.rich(
+                        TextSpan(children: [
+                          TextSpan(text: f.featureName, style: const TextStyle(fontWeight: FontWeight.w600)),
+                          if (f.featureValue != null && f.featureValue!.isNotEmpty)
+                            TextSpan(text: '  ${f.featureValue}', style: const TextStyle(color: AppColors.textSecondary)),
+                        ]),
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }

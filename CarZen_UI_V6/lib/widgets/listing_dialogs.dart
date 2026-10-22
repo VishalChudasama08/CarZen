@@ -39,26 +39,28 @@ class _OrderRequestDialogState extends State<_OrderRequestDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text('Send a purchase request'),
-      content: SizedBox(
-        width: 420,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text.rich(TextSpan(children: [
-              const TextSpan(text: 'You\'re asking to buy this car at '),
-              TextSpan(text: formatInr(widget.amount), style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF0F1C2E))),
-              const TextSpan(text: '. The seller can accept or decline. Nothing is charged now - you pay only after they accept.'),
-            ])),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _note,
-              maxLength: 5000,
-              minLines: 1,
-              maxLines: 4,
-              decoration: const InputDecoration(labelText: 'Note to the seller (optional)', hintText: 'e.g. When could I see the car?'),
-            ),
-          ],
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text.rich(TextSpan(children: [
+                const TextSpan(text: 'You\'re asking to buy this car at '),
+                TextSpan(text: formatInr(widget.amount), style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF0F1C2E))),
+                const TextSpan(text: '. The seller can accept or decline. Nothing is charged now - you pay only after they accept.'),
+              ])),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _note,
+                maxLength: 5000,
+                minLines: 1,
+                maxLines: 4,
+                decoration: const InputDecoration(labelText: 'Note to the seller (optional)', hintText: 'e.g. When could I see the car?'),
+              ),
+            ],
+          ),
         ),
       ),
       actions: [
@@ -105,8 +107,8 @@ class _InquiryDialogState extends State<_InquiryDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text('Message the seller'),
-      content: SizedBox(
-        width: 420,
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
         child: Form(
           key: _formKey,
           child: SingleChildScrollView(
@@ -160,8 +162,8 @@ class _ReportDialogState extends State<_ReportDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text('Report this listing'),
-      content: SizedBox(
-        width: 420,
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -248,8 +250,8 @@ class _ReviewDialogState extends State<_ReviewDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text('Review your purchase'),
-      content: SizedBox(
-        width: 440,
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 440),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -257,16 +259,25 @@ class _ReviewDialogState extends State<_ReviewDialog> {
             children: [
               Text('How was buying the ${widget.carName}?'),
               const SizedBox(height: 14),
-              Row(
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 2,
+                runSpacing: 4,
                 children: [
                   for (var i = 1; i <= 5; i++)
                     IconButton(
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.all(4),
+                      constraints: const BoxConstraints(),
                       tooltip: '$i - ${_labels[i - 1]}',
                       onPressed: () => setState(() => _rating = i),
-                      icon: Icon(i <= _rating ? Icons.star : Icons.star_border, size: 30, color: i <= _rating ? const Color(0xFFE0A100) : const Color(0xFFC6CFDA)),
+                      icon: Icon(i <= _rating ? Icons.star : Icons.star_border, size: 28, color: i <= _rating ? const Color(0xFFE0A100) : const Color(0xFFC6CFDA)),
                     ),
-                  const SizedBox(width: 6),
-                  if (_rating > 0) Text(_labels[_rating - 1], style: const TextStyle(fontWeight: FontWeight.w600)),
+                  if (_rating > 0)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 6),
+                      child: Text(_labels[_rating - 1], style: const TextStyle(fontWeight: FontWeight.w600)),
+                    ),
                 ],
               ),
               if (_tried && _rating == 0)

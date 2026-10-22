@@ -764,7 +764,10 @@ class _BottomBar extends StatelessWidget {
                       if (onBack != null) OutlinedButton(onPressed: saving ? null : onBack, child: const Text('Back')),
                       const Spacer(),
                       if (onSaveNow != null) ...[
-                        TextButton(onPressed: saving ? null : onSaveNow, child: const Text('Save changes')),
+                        TextButton(
+                          onPressed: saving ? null : onSaveNow,
+                          child: Text(Breakpoints.isCompact(context) ? 'Save' : 'Save changes'),
+                        ),
                         const SizedBox(width: 8),
                       ],
                       FilledButton(

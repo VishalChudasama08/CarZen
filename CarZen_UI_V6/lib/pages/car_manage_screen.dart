@@ -703,18 +703,23 @@ class _FeaturesPanelState extends State<_FeaturesPanel> {
       subtitle: 'Shown on your listing. Add what makes the car worth a look.',
       children: [
         if (features.isNotEmpty) ...[
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final f in features)
-                InputChip(
-                  label: Text(f.featureValue == null || f.featureValue!.isEmpty ? f.featureName : '${f.featureName}: ${f.featureValue}'),
-                  onDeleted: _busy ? null : () => _remove(f),
-                  deleteButtonTooltipMessage: 'Remove ${f.featureName}',
-                  deleteIcon: const Icon(Icons.close, size: 16),
-                ),
-            ],
+          LayoutBuilder(
+            builder: (context, c) => Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final f in features)
+                  ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: c.maxWidth),
+                    child: InputChip(
+                      label: Text(f.featureValue == null || f.featureValue!.isEmpty ? f.featureName : '${f.featureName}: ${f.featureValue}'),
+                      onDeleted: _busy ? null : () => _remove(f),
+                      deleteButtonTooltipMessage: 'Remove ${f.featureName}',
+                      deleteIcon: const Icon(Icons.close, size: 16),
+                    ),
+                  ),
+              ],
+            ),
           ),
           const SizedBox(height: 16),
         ],

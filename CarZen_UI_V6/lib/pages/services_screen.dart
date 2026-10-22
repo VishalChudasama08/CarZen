@@ -314,16 +314,23 @@ class _AdminNotice extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadii.md),
         border: Border.all(color: AppColors.cyan.withValues(alpha: 0.5)),
       ),
-      child: Wrap(
-        crossAxisAlignment: WrapCrossAlignment.center,
-        spacing: 12,
-        runSpacing: 8,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.admin_panel_settings_outlined, color: AppColors.secondary),
-          const Text(
-            "You're signed in as an admin. This is the customer view; manage services from Service Catalog.",
-            style: TextStyle(fontWeight: FontWeight.w600, height: 1.35),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.admin_panel_settings_outlined, color: AppColors.secondary),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  "You're signed in as an admin. This is the customer view; manage services from Service Catalog.",
+                  style: TextStyle(fontWeight: FontWeight.w600, height: 1.35),
+                ),
+              ),
+            ],
           ),
+          const SizedBox(height: 10),
           FilledButton(onPressed: onOpen, child: const Text('Open Service Catalog')),
         ],
       ),

@@ -90,7 +90,9 @@ class _StatusDialogState extends State<_StatusDialog> {
                         children: [
                           Icon(Icons.warning_amber_rounded, size: 18, color: AppColors.danger),
                           SizedBox(width: 6),
-                          Text('Listings stay as they are', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.danger)),
+                          Expanded(
+                            child: Text('Listings stay as they are', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.danger)),
+                          ),
                         ],
                       ),
                       SizedBox(height: 4),
