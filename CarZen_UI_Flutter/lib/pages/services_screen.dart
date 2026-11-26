@@ -5,13 +5,13 @@ import 'package:carzen_flutter/services/session_controller.dart';
 import 'package:carzen_flutter/theme/app_theme.dart';
 import 'package:carzen_flutter/utils/breakpoints.dart';
 import 'package:carzen_flutter/utils/formatters.dart';
-import 'package:carzen_flutter/widgets/carzen_nav_bar.dart';
 import 'package:carzen_flutter/widgets/network_photo.dart';
 import 'package:carzen_flutter/widgets/page_container.dart';
 import 'package:carzen_flutter/widgets/paged_controller.dart';
 import 'package:carzen_flutter/widgets/pagination_bar.dart';
 import 'package:carzen_flutter/widgets/service_widgets.dart';
 import 'package:carzen_flutter/widgets/state_views.dart';
+import 'package:carzen_flutter/widgets/app_shell.dart';
 import 'package:flutter/material.dart';
 
 /// Customer service catalog — `GET /v1/services` (public, paginated, searchable).
@@ -102,21 +102,18 @@ class _ServicesScreenState extends State<ServicesScreen> {
       animation: Listenable.merge([_paged, _session]),
       builder: (context, _) {
         final isAdmin = _session.isAdmin;
-        return Scaffold(
-          appBar: const CarZenNavBar(current: NavSection.services, title: 'Services'),
-          bottomNavigationBar: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (_selected.isNotEmpty && !isAdmin)
-                _SelectionTray(
+        return AppScaffold(
+          section: NavSection.services,
+          title: 'Workshop',
+          showBottomNav: true,
+          bottomBar: _selected.isNotEmpty && !isAdmin
+              ? _SelectionTray(
                   count: _selected.length,
                   total: _total,
                   onClear: () => setState(_selected.clear),
                   onBook: () => _book(_selected.keys),
-                ),
-              const CarZenBottomBar(current: NavSection.services),
-            ],
-          ),
+                )
+              : null,
           body: SafeArea(
             bottom: false,
             child: RefreshIndicator(
@@ -256,30 +253,14 @@ class _Hero extends StatelessWidget {
       padding: EdgeInsets.all(compact ? 20 : 32),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AppRadii.xl),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [AppColors.primary, AppColors.primarySoft],
-        ),
+        color: AppColors.ink,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: AppColors.cyan.withValues(alpha: 0.18),
-              borderRadius: BorderRadius.circular(AppRadii.pill),
-            ),
-            child: const Text(
-              'CARZEN WORKSHOP',
-              style: TextStyle(color: AppColors.cyan, fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Car care, booked in minutes.',
-            style: TextStyle(color: Colors.white, fontSize: compact ? 26 : 34, fontWeight: FontWeight.w800, height: 1.1, letterSpacing: -0.6),
+          Semantics(
+            header: true,
+            child: Text('Car care, booked in minutes.', style: AppText.heading(compact ? 26 : 36, color: Colors.white, height: 1.1)),
           ),
           const SizedBox(height: 8),
           Text(
@@ -333,16 +314,23 @@ class _AdminNotice extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadii.md),
         border: Border.all(color: AppColors.cyan.withValues(alpha: 0.5)),
       ),
-      child: Wrap(
-        crossAxisAlignment: WrapCrossAlignment.center,
-        spacing: 12,
-        runSpacing: 8,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.admin_panel_settings_outlined, color: AppColors.secondary),
-          const Text(
-            "You're signed in as an admin. This is the customer view; manage services from Service Catalog.",
-            style: TextStyle(fontWeight: FontWeight.w600, height: 1.35),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.admin_panel_settings_outlined, color: AppColors.secondary),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  "You're signed in as an admin. This is the customer view; manage services from Service Catalog.",
+                  style: TextStyle(fontWeight: FontWeight.w600, height: 1.35),
+                ),
+              ),
+            ],
           ),
+          const SizedBox(height: 10),
           FilledButton(onPressed: onOpen, child: const Text('Open Service Catalog')),
         ],
       ),
@@ -360,6 +348,7 @@ class _SelectionTray extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isNarrow = Breakpoints.isNarrow(context);
     return Material(
       color: AppColors.primary,
       child: SafeArea(
@@ -369,7 +358,7 @@ class _SelectionTray extends StatelessWidget {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: Breakpoints.maxContentWidth),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding: EdgeInsets.symmetric(horizontal: isNarrow ? 10 : 16, vertical: 10),
               child: Row(
                 children: [
                   Expanded(
@@ -379,24 +368,34 @@ class _SelectionTray extends StatelessWidget {
                       children: [
                         Text(
                           '$count service${count == 1 ? '' : 's'} selected',
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: isNarrow ? 13 : 14),
                         ),
                         Text(
                           'Estimated ${formatInr(total)}',
-                          style: const TextStyle(color: AppColors.textOnDarkMuted, fontSize: 12.5),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: AppColors.textOnDarkMuted, fontSize: isNarrow ? 11.5 : 12.5),
                         ),
                       ],
                     ),
                   ),
                   TextButton(
                     onPressed: onClear,
-                    style: TextButton.styleFrom(foregroundColor: AppColors.textOnDarkMuted),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.textOnDarkMuted,
+                      padding: EdgeInsets.symmetric(horizontal: isNarrow ? 6 : 12),
+                    ),
                     child: const Text('Clear'),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: isNarrow ? 4 : 8),
                   ElevatedButton(
                     onPressed: onBook,
-                    style: ElevatedButton.styleFrom(minimumSize: const Size(0, 44), padding: const EdgeInsets.symmetric(horizontal: 20)),
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: const Size(0, 42),
+                      padding: EdgeInsets.symmetric(horizontal: isNarrow ? 12 : 20),
+                    ),
                     child: const Text('Book now'),
                   ),
                 ],

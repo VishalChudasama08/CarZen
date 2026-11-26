@@ -1,13 +1,11 @@
 import 'package:carzen_flutter/models/catalog_models.dart';
+import 'package:carzen_flutter/models/enums.dart';
 import 'package:carzen_flutter/models/pagination.dart';
 import 'api_client.dart';
 
 /// Talks to `/v1/car-brands`, `/v1/car-models`, `/v1/car-variants`.
 ///
-/// Per the backend (`catalog.py`): every `GET` here is public (no token
-/// needed), every write (`POST`/`PATCH`/`DELETE`) just needs any logged-in
-/// user — there's no admin-only restriction on catalog data despite it
-/// looking like reference data.
+/// Every `GET` here is public; every write is admin-only (`catalog.py`).
 class CatalogService {
   CatalogService({ApiClient? client}) : _client = client ?? ApiClient();
   final ApiClient _client;
@@ -77,4 +75,73 @@ class CatalogService {
     final json = await _client.get('/car-variants/$id');
     return CatalogVariant.fromJson(json as Map<String, dynamic>);
   }
+
+  // ---- Admin catalogue management ----
+
+  Future<CatalogBrand> updateBrand(int id, Map<String, dynamic> fields) async {
+    final json = await _client.patch('/car-brands/$id', body: fields);
+    return CatalogBrand.fromJson(json as Map<String, dynamic>);
+  }
+
+  Future<CatalogCarModel> createModel({
+    required int brandId,
+    required String name,
+    required String slug,
+    BodyType? bodyType,
+    int? seatingCapacity,
+    String? description,
+  }) async {
+    final json = await _client.post('/car-models', body: {
+      'brand_id': brandId,
+      'name': name,
+      'slug': slug,
+      'body_type': bodyType?.apiValue,
+      'seating_capacity': seatingCapacity,
+      'description': description,
+      'is_active': true,
+    });
+    return CatalogCarModel.fromJson(json as Map<String, dynamic>);
+  }
+
+  Future<CatalogCarModel> updateModel(int id, Map<String, dynamic> fields) async {
+    final json = await _client.patch('/car-models/$id', body: fields);
+    return CatalogCarModel.fromJson(json as Map<String, dynamic>);
+  }
+
+  Future<CatalogCarModel> setModelStatus(int id, bool isActive) async {
+    final json = await _client.patch('/car-models/$id/status', body: {'is_active': isActive});
+    return CatalogCarModel.fromJson(json as Map<String, dynamic>);
+  }
+
+  Future<void> deleteModel(int id) => _client.delete('/car-models/$id');
+
+  Future<CatalogVariant> createVariant({
+    required int modelId,
+    required String name,
+    required FuelType fuelType,
+    required TransmissionType transmission,
+    num? engineCc,
+    num? horsepower,
+    int? seatingCapacity,
+    num? exShowroomPrice,
+  }) async {
+    final json = await _client.post('/car-variants', body: {
+      'model_id': modelId,
+      'variant_name': name,
+      'fuel_type': fuelType.apiValue,
+      'transmission': transmission.apiValue,
+      'engine_cc': engineCc,
+      'horsepower': horsepower,
+      'seating_capacity': seatingCapacity,
+      'ex_showroom_price': exShowroomPrice,
+    });
+    return CatalogVariant.fromJson(json as Map<String, dynamic>);
+  }
+
+  Future<CatalogVariant> updateVariant(int id, Map<String, dynamic> fields) async {
+    final json = await _client.patch('/car-variants/$id', body: fields);
+    return CatalogVariant.fromJson(json as Map<String, dynamic>);
+  }
+
+  Future<void> deleteVariant(int id) => _client.delete('/car-variants/$id');
 }

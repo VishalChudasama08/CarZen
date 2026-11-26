@@ -1,18 +1,18 @@
 import 'package:carzen_flutter/routes/app_routes.dart';
-import 'package:carzen_flutter/widgets/carzen_nav_bar.dart';
-import 'package:carzen_flutter/widgets/state_views.dart';
-import 'package:carzen_flutter/widgets/content_width.dart';
-import 'package:flutter/material.dart';
 import 'package:carzen_flutter/services/api_exception.dart';
 import 'package:carzen_flutter/services/profile_service.dart';
 import 'package:carzen_flutter/theme/app_theme.dart';
+import 'package:carzen_flutter/utils/breakpoints.dart';
 import 'package:carzen_flutter/utils/validators.dart';
-import 'package:carzen_flutter/widgets/auth_error_banner.dart';
+import 'package:carzen_flutter/widgets/app_shell.dart';
 import 'package:carzen_flutter/widgets/auth_text_field.dart';
+import 'package:carzen_flutter/widgets/form_widgets.dart';
+import 'package:carzen_flutter/widgets/page_container.dart';
 import 'package:carzen_flutter/widgets/primary_button.dart';
+import 'package:carzen_flutter/widgets/state_views.dart';
+import 'package:flutter/material.dart';
 
-/// `POST /v1/users/me/change-password` — requires the current password
-/// plus a new one; confirm-new-password is a frontend-only check.
+/// `POST /v1/users/me/change-password`.
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
 
@@ -22,105 +22,115 @@ class ChangePasswordScreen extends StatefulWidget {
 
 class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _profileService = ProfileService();
+  final _profile = ProfileService();
+  final _current = TextEditingController();
+  final _next = TextEditingController();
+  final _confirm = TextEditingController();
+  bool _saving = false;
+  String? _error;
 
-  final _currentController = TextEditingController();
-  final _newController = TextEditingController();
-  final _confirmController = TextEditingController();
+  @override
+  void dispose() {
+    _current.dispose();
+    _next.dispose();
+    _confirm.dispose();
+    super.dispose();
+  }
 
-  bool _isSaving = false;
-  String? _errorMessage;
-
-  Future<void> _handleSave() async {
-    if (!_formKey.currentState!.validate()) return;
+  Future<void> _save() async {
+    if (_saving || !_formKey.currentState!.validate()) return;
     setState(() {
-      _isSaving = true;
-      _errorMessage = null;
+      _saving = true;
+      _error = null;
     });
     try {
-      await _profileService.changePassword(
-        currentPassword: _currentController.text,
-        newPassword: _newController.text,
-      );
+      await _profile.changePassword(currentPassword: _current.text, newPassword: _next.text);
       if (!mounted) return;
-      showAppSnack(context, 'Password updated.');
-      Navigator.of(context).pop();
+      showAppSnack(context, 'Password changed');
+      Navigator.of(context).pop(true);
     } on ApiException catch (e) {
-      setState(() => _errorMessage = e.message);
+      if (mounted) setState(() => _error = e.message);
     } finally {
-      if (mounted) setState(() => _isSaving = false);
+      if (mounted) setState(() => _saving = false);
     }
   }
 
   @override
-  void dispose() {
-    _currentController.dispose();
-    _newController.dispose();
-    _confirmController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: const CarZenNavBar(current: NavSection.profile, title: 'Change Password', fallbackRoute: AppRoutes.profile),
-      body: ContentWidth(
-        maxWidth: 560,
-        child: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Change your password',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary,
+    return AppScaffold(
+      section: NavSection.profile,
+      title: 'Change password',
+      fallbackRoute: AppRoutes.account,
+      showBackButton: true,
+      body: SingleChildScrollView(
+        child: PageContainer(
+          maxWidth: 560,
+          verticalPadding: Breakpoints.isCompact(context) ? 18 : 32,
+          child: AutofillGroup(
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const PageHeader(title: 'Change password', subtitle: 'Use a password you don\'t use anywhere else.'),
+                  const SizedBox(height: 22),
+                  if (_error != null) InlineError(_error!),
+                  FormPanel(
+                    title: 'New password',
+                    children: [
+                      AuthTextField(
+                        controller: _current,
+                        label: 'Current password',
+                        required: true,
+                        isPassword: true,
+                        autofillHints: const [AutofillHints.password],
+                        validator: (v) => Validators.required(v, message: 'Enter your current password'),
+                      ),
+                      AuthTextField(
+                        controller: _next,
+                        label: 'New password',
+                        required: true,
+                        isPassword: true,
+                        autofillHints: const [AutofillHints.newPassword],
+                        onChanged: (_) => setState(() {}),
+                        validator: (v) {
+                          final base = Validators.password(v);
+                          if (base != null) return base;
+                          return v == _current.text ? 'Choose a password different from the current one' : null;
+                        },
+                      ),
+                      Wrap(
+                        spacing: 14,
+                        runSpacing: 6,
+                        children: [
+                          for (final r in Validators.passwordRules)
+                            Row(mainAxisSize: MainAxisSize.min, children: [
+                              Icon(r.test(_next.text) ? Icons.check_circle : Icons.radio_button_unchecked,
+                                  size: 15, color: r.test(_next.text) ? AppColors.success : AppColors.textTertiary),
+                              const SizedBox(width: 5),
+                              Text(r.label, style: TextStyle(fontSize: 12.5, color: r.test(_next.text) ? AppColors.success : AppColors.textSecondary)),
+                            ]),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      AuthTextField(
+                        controller: _confirm,
+                        label: 'Confirm new password',
+                        required: true,
+                        isPassword: true,
+                        textInputAction: TextInputAction.done,
+                        onSubmitted: (_) => _save(),
+                        validator: (v) => Validators.confirmPassword(v, _next.text),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  'Keep your account secure by choosing a strong password.',
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
-                ),
-                const SizedBox(height: 20),
-                if (_errorMessage != null) AuthErrorBanner(message: _errorMessage!),
-                AuthTextField(
-                  controller: _currentController,
-                  label: 'Current Password *',
-                  hint: 'Enter your current password',
-                  icon: Icons.lock_outline_rounded,
-                  isPassword: true,
-                  validator: (v) => Validators.required(v, message: 'Current password is required'),
-                ),
-                AuthTextField(
-                  controller: _newController,
-                  label: 'New Password *',
-                  hint: 'At least 8 characters',
-                  icon: Icons.lock_outline_rounded,
-                  isPassword: true,
-                  validator: Validators.password,
-                ),
-                AuthTextField(
-                  controller: _confirmController,
-                  label: 'Confirm New Password *',
-                  hint: 'Re-enter your new password',
-                  icon: Icons.lock_outline_rounded,
-                  isPassword: true,
-                  textInputAction: TextInputAction.done,
-                  validator: (v) => Validators.confirmPassword(v, _newController.text),
-                ),
-                const SizedBox(height: 10),
-                PrimaryButton(label: 'Update Password', onPressed: _handleSave, isLoading: _isSaving),
-              ],
+                  const SizedBox(height: 20),
+                  PrimaryButton(label: 'Change password', onPressed: _save, isLoading: _saving),
+                ],
+              ),
             ),
           ),
         ),
-      ),
       ),
     );
   }

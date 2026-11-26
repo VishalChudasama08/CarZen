@@ -1,11 +1,9 @@
 import 'package:carzen_flutter/models/service_models.dart';
-import 'package:carzen_flutter/routes/app_routes.dart';
 import 'package:carzen_flutter/services/api_exception.dart';
 import 'package:carzen_flutter/services/service_catalog_api.dart';
 import 'package:carzen_flutter/theme/app_theme.dart';
 import 'package:carzen_flutter/utils/breakpoints.dart';
 import 'package:carzen_flutter/utils/formatters.dart';
-import 'package:carzen_flutter/widgets/carzen_nav_bar.dart';
 import 'package:carzen_flutter/widgets/network_photo.dart';
 import 'package:carzen_flutter/widgets/page_container.dart';
 import 'package:carzen_flutter/widgets/paged_controller.dart';
@@ -13,6 +11,7 @@ import 'package:carzen_flutter/widgets/pagination_bar.dart';
 import 'package:carzen_flutter/widgets/state_views.dart';
 import 'package:carzen_flutter/widgets/status_pill.dart';
 import 'package:carzen_flutter/widgets/surface_card.dart';
+import 'package:carzen_flutter/widgets/app_shell.dart';
 import 'package:flutter/material.dart';
 
 /// Admin service catalog — `/v1/admin/services` (paginated, status + search
@@ -140,9 +139,9 @@ class _AdminServicesScreenState extends State<AdminServicesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: const CarZenNavBar(current: NavSection.adminServices, title: 'Service Catalog', fallbackRoute: AppRoutes.admin),
-      bottomNavigationBar: const CarZenBottomBar(current: NavSection.adminServices),
+    return AppScaffold(
+      section: NavSection.adminServices,
+      title: 'Workshop',
       floatingActionButton: Breakpoints.isCompact(context)
           ? FloatingActionButton.extended(onPressed: _edit, icon: const Icon(Icons.add_rounded), label: const Text('New service'))
           : null,
@@ -164,7 +163,6 @@ class _AdminServicesScreenState extends State<AdminServicesScreen> {
                       subtitle: _paged.meta == null
                           ? 'Create and manage the services customers can book.'
                           : '${formatCount(_paged.meta!.total)} service${_paged.meta!.total == 1 ? '' : 's'} match the current filters.',
-                      icon: Icons.build_circle_rounded,
                       actions: Breakpoints.isCompact(context)
                           ? const []
                           : [FilledButton.icon(onPressed: _edit, icon: const Icon(Icons.add_rounded), label: const Text('New service'))],
@@ -312,7 +310,7 @@ class _ServiceRow extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  [formatInr(s.price), if (s.durationMinutes != null) formatDuration(s.durationMinutes!)].join(' · '),
+                  [formatInr(s.price), if (s.durationMinutes != null) formatDuration(s.durationMinutes!)].join('  |  '),
                   style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary),
                 ),
                 if (s.description != null && s.description!.isNotEmpty) ...[
@@ -447,8 +445,8 @@ class _ServiceFormDialogState extends State<_ServiceFormDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text(_editing ? 'Edit service' : 'New service'),
-      content: SizedBox(
-        width: 480,
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 480),
         child: SingleChildScrollView(
           child: Form(
             key: _formKey,

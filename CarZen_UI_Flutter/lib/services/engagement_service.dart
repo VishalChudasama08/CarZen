@@ -40,8 +40,8 @@ class EngagementService {
 
   // ---- Notifications ----
 
-  Future<PaginatedList<NotificationRecord>> listNotifications({int page = 1, int limit = 30}) async {
-    final json = await _client.get('/notifications', query: {'page': page, 'limit': limit});
+  Future<PaginatedList<NotificationRecord>> listNotifications({int page = 1, int limit = 30, bool unreadOnly = false}) async {
+    final json = await _client.get(unreadOnly ? '/notifications/unread' : '/notifications', query: {'page': page, 'limit': limit});
     return PaginatedList.fromJson(json as Map<String, dynamic>, NotificationRecord.fromJson);
   }
 

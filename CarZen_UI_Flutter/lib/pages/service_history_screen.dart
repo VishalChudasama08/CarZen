@@ -3,7 +3,6 @@ import 'package:carzen_flutter/routes/app_routes.dart';
 import 'package:carzen_flutter/services/service_request_api.dart';
 import 'package:carzen_flutter/theme/app_theme.dart';
 import 'package:carzen_flutter/utils/formatters.dart';
-import 'package:carzen_flutter/widgets/carzen_nav_bar.dart';
 import 'package:carzen_flutter/widgets/network_photo.dart';
 import 'package:carzen_flutter/widgets/page_container.dart';
 import 'package:carzen_flutter/widgets/paged_controller.dart';
@@ -12,6 +11,7 @@ import 'package:carzen_flutter/widgets/service_widgets.dart';
 import 'package:carzen_flutter/widgets/state_views.dart';
 import 'package:carzen_flutter/widgets/status_pill.dart';
 import 'package:carzen_flutter/widgets/surface_card.dart';
+import 'package:carzen_flutter/widgets/app_shell.dart';
 import 'package:flutter/material.dart';
 
 /// Completed work on the user's cars — `GET /v1/services/history` (paginated).
@@ -40,9 +40,10 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: const CarZenNavBar(current: NavSection.services, title: 'Service history'),
-      bottomNavigationBar: const CarZenBottomBar(current: NavSection.services),
+    return AppScaffold(
+      section: NavSection.services,
+      title: 'Service history',
+      showBottomNav: true,
       body: SafeArea(
         bottom: false,
         child: RefreshIndicator(
@@ -57,9 +58,8 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const PageHeader(
-                      title: 'Services',
+                      title: 'Workshop',
                       subtitle: 'A record of the work done on your cars.',
-                      icon: Icons.home_repair_service_rounded,
                     ),
                     const SizedBox(height: AppSpacing.lg),
                     const ServiceTabs(current: ServicesTab.history),
@@ -131,7 +131,7 @@ class _RecordCard extends StatelessWidget {
           subtitle: Padding(
             padding: const EdgeInsets.only(top: 4),
             child: Text(
-              [formatDate(r.serviceDate), if (r.car != null) r.car!.label].join(' · '),
+              [formatDate(r.serviceDate), if (r.car != null) r.car!.label].join('  |  '),
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ),

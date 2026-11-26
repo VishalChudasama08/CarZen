@@ -1,7 +1,7 @@
+import 'package:carzen_flutter/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 
 class AuthHeader extends StatelessWidget {
-
   final String title;
   final String subTitle;
 
@@ -9,14 +9,16 @@ class AuthHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: Theme.of(context).textTheme.headlineMedium),
-        const SizedBox(height: 6),
-        Text(subTitle, style: Theme.of(context).textTheme.bodyMedium),
-        const SizedBox(height: 24)
-      ],
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Semantics(header: true, child: Text(title, style: AppText.heading(26))),
+          const SizedBox(height: 8),
+          Text(subTitle, style: const TextStyle(fontSize: 15, height: 1.5, color: AppColors.textSecondary)),
+        ],
+      ),
     );
   }
 }

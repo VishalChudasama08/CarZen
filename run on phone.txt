@@ -1,9 +1,29 @@
 
 For run on phone =>
 
-in terminal at CarZen_UI_V4>
+in new terminal>
 
-flutter pub get
+
+adb kill-server
+adb start-server
+
+PS C:\Users\visha> adb pair 10.179.49.91:44789     (phone showing ip,port & code on devloper setting wireless bebugging, 'Pair device with pairing code')
+Enter pairing code: 957021
+Successfully paired to 10.179.49.91:44789 [guid=adb-VG45XKGMSKXSZTDI-B2GZAp]
+PS C:\Users\visha> adb devices
+List of devices attached
+
+PS C:\Users\visha> adb connect 10.179.49.91:44789     (after this wait in phone come notifination do not press it else connetion is off)
+cannot connect to 10.179.49.91:44789: No connection could be made because the target machine actively refused it. (10061)
+PS C:\Users\visha> adb connect 10.179.49.91:44789
+cannot connect to 10.179.49.91:44789: No connection could be made because the target machine actively refused it. (10061)
+PS C:\Users\visha> adb connect 10.179.49.91:44789
+cannot connect to 10.179.49.91:44789: No connection could be made because the target machine actively refused it. (10061)
+PS C:\Users\visha> adb devices
+List of devices attached
+adb-VG45XKGMSKXSZTDI-B2GZAp._adb-tls-connect._tcp       device
+
+
 
 flutter devices
 

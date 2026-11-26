@@ -9,7 +9,6 @@ import 'package:carzen_flutter/services/service_request_api.dart';
 import 'package:carzen_flutter/theme/app_theme.dart';
 import 'package:carzen_flutter/utils/breakpoints.dart';
 import 'package:carzen_flutter/utils/formatters.dart';
-import 'package:carzen_flutter/widgets/carzen_nav_bar.dart';
 import 'package:carzen_flutter/widgets/network_photo.dart';
 import 'package:carzen_flutter/widgets/page_container.dart';
 import 'package:carzen_flutter/widgets/paged_controller.dart';
@@ -17,6 +16,7 @@ import 'package:carzen_flutter/widgets/pagination_bar.dart';
 import 'package:carzen_flutter/widgets/service_sheets.dart';
 import 'package:carzen_flutter/widgets/state_views.dart';
 import 'package:carzen_flutter/widgets/surface_card.dart';
+import 'package:carzen_flutter/widgets/app_shell.dart';
 import 'package:flutter/material.dart';
 
 /// Book one or more services for a car: services → car → date & time →
@@ -280,13 +280,11 @@ class _BookServiceScreenState extends State<BookServiceScreen> {
   Widget build(BuildContext context) {
     final wide = Breakpoints.isExpanded(context);
     final form = _buildForm(context);
-    return Scaffold(
-      appBar: const CarZenNavBar(
-        current: NavSection.services,
-        title: 'Book a service',
-        fallbackRoute: AppRoutes.services,
-      ),
-      bottomNavigationBar: wide ? null : _MobileSubmitBar(total: _total, submitting: _submitting, onSubmit: _submit),
+    return AppScaffold(
+      section: NavSection.services,
+      title: 'Book a service',
+      fallbackRoute: AppRoutes.services,
+      bottomBar: wide ? null : _MobileSubmitBar(total: _total, submitting: _submitting, onSubmit: _submit),
       body: SafeArea(
         bottom: false,
         child: SingleChildScrollView(
@@ -315,7 +313,6 @@ class _BookServiceScreenState extends State<BookServiceScreen> {
         const PageHeader(
           title: 'Book a service',
           subtitle: 'Four quick steps. You can review everything before sending.',
-          icon: Icons.event_available_rounded,
         ),
         const SizedBox(height: AppSpacing.xl),
         _StepCard(number: 1, title: 'Services', child: _servicesStep()),
@@ -373,7 +370,7 @@ class _BookServiceScreenState extends State<BookServiceScreen> {
                         Text(s.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700)),
                         const SizedBox(height: 2),
                         Text(
-                          [formatInr(s.price), if (s.durationMinutes != null) formatDuration(s.durationMinutes!)].join(' · '),
+                          [formatInr(s.price), if (s.durationMinutes != null) formatDuration(s.durationMinutes!)].join('  |  '),
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                       ],
@@ -424,9 +421,9 @@ class _BookServiceScreenState extends State<BookServiceScreen> {
             title: [
               '${car.manufacturingYear}',
               if (car.registrationNumber != null && car.registrationNumber!.isNotEmpty) car.registrationNumber!,
-            ].join(' · '),
+            ].join('  |  '),
             subtitle: [car.fuelType.label, car.transmission.label, if (car.color != null && car.color!.isNotEmpty) car.color!, car.city]
-                .join(' · '),
+                .join('  |  '),
             onTap: () => setState(() => _carId = car.id),
           ),
         Align(
@@ -564,7 +561,7 @@ class _BookServiceScreenState extends State<BookServiceScreen> {
           const SizedBox(height: 4),
           Text('The final amount is confirmed by CarZen when the request is created.', style: Theme.of(context).textTheme.bodySmall),
           const SizedBox(height: 14),
-          _SummaryLine(Icons.event_rounded, _date == null ? 'Date not chosen' : '${formatDate(_date)}${_time == null ? '' : ' · ${formatClock(_time)}'}'),
+          _SummaryLine(Icons.event_rounded, _date == null ? 'Date not chosen' : '${formatDate(_date)}${_time == null ? '' : '  |  ${formatClock(_time)}'}'),
           if (_carId != null && _cars != null)
             _SummaryLine(
               Icons.directions_car_outlined,
@@ -634,7 +631,7 @@ class _StepCard extends StatelessWidget {
                 child: Text('$number', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13)),
               ),
               const SizedBox(width: 10),
-              Text(title, style: Theme.of(context).textTheme.titleMedium),
+              Expanded(child: Text(title, style: Theme.of(context).textTheme.titleMedium)),
             ],
           ),
           const SizedBox(height: 16),
@@ -818,7 +815,7 @@ class _ServicePickerSheetState extends State<_ServicePickerSheet> {
                                                 }),
                                         title: Text(s.name, style: const TextStyle(fontWeight: FontWeight.w700)),
                                         subtitle: Text(
-                                          [formatInr(s.price), if (s.durationMinutes != null) formatDuration(s.durationMinutes!)].join(' · '),
+                                          [formatInr(s.price), if (s.durationMinutes != null) formatDuration(s.durationMinutes!)].join('  |  '),
                                         ),
                                         controlAffinity: ListTileControlAffinity.leading,
                                       ),

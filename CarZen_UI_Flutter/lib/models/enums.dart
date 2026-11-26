@@ -10,7 +10,7 @@ enum OwnershipType { firstOwner, secondOwner, thirdOwner, fourthOrMore }
 
 /// NOTE: `old` maps to the backend's literal value `"oldCar"` — that odd
 /// casing comes straight from `CarEnums.py` (`OLD = "oldCar"`), not a typo
-/// here. Flagged to Ayush; kept as-is so requests actually match.
+/// here; kept as-is so requests match the backend.
 enum CarCondition { excellent, good, fair, poor, newCar, old }
 
 enum CarApprovalStatus { draft, pendingApproval, approved, rejected, published, sold, inactive }
@@ -21,7 +21,7 @@ enum BodyType { hatchback, sedan, suv, muv, mpv, coupe, convertible, pickup, min
 
 enum ListingType { sale, resale }
 
-enum ListingStatus { draft, active, reserved, sold, expired, cancelled, removed }
+enum ListingStatus { draft, pendingReview, approved, rejected, active, reserved, sold, expired, cancelled, removed, suspended }
 
 extension FuelTypeX on FuelType {
   String get apiValue => name;
@@ -31,7 +31,13 @@ extension FuelTypeX on FuelType {
 
 extension TransmissionTypeX on TransmissionType {
   String get apiValue => name;
-  String get label => name.toUpperCase();
+  String get label => switch (this) {
+        TransmissionType.manual => 'Manual',
+        TransmissionType.automatic => 'Automatic',
+        TransmissionType.amt => 'AMT',
+        TransmissionType.cvt => 'CVT',
+        TransmissionType.dct => 'DCT',
+      };
   static TransmissionType fromApi(String value) =>
       TransmissionType.values.firstWhere((e) => e.name == value);
 }
@@ -68,7 +74,7 @@ extension CarConditionX on CarCondition {
   String get label => this == CarCondition.newCar
       ? 'New'
       : this == CarCondition.old
-          ? 'Old'
+          ? 'Used (resale)'
           : apiValue[0].toUpperCase() + apiValue.substring(1);
   static CarCondition fromApi(String value) =>
       _conditionApi.entries.firstWhere((e) => e.value == value).key;
@@ -85,7 +91,15 @@ const Map<CarApprovalStatus, String> _approvalApi = {
 };
 extension CarApprovalStatusX on CarApprovalStatus {
   String get apiValue => _approvalApi[this]!;
-  String get label => apiValue.replaceAll('_', ' ');
+  String get label => switch (this) {
+        CarApprovalStatus.draft => 'Draft',
+        CarApprovalStatus.pendingApproval => 'Waiting for review',
+        CarApprovalStatus.approved => 'Approved',
+        CarApprovalStatus.rejected => 'Changes needed',
+        CarApprovalStatus.published => 'Live',
+        CarApprovalStatus.sold => 'Sold',
+        CarApprovalStatus.inactive => 'Inactive',
+      };
   static CarApprovalStatus fromApi(String value) =>
       _approvalApi.entries.firstWhere((e) => e.value == value).key;
 }
@@ -112,10 +126,25 @@ extension ListingTypeX on ListingType {
 }
 
 extension ListingStatusX on ListingStatus {
-  String get apiValue => name;
-  String get label => name[0].toUpperCase() + name.substring(1);
+  String get apiValue => switch (this) {
+        ListingStatus.pendingReview => 'pending_review',
+        _ => name,
+      };
+  String get label => switch (this) {
+        ListingStatus.draft => 'Not published',
+        ListingStatus.pendingReview => 'In review',
+        ListingStatus.approved => 'Approved',
+        ListingStatus.rejected => 'Rejected',
+        ListingStatus.active => 'Live',
+        ListingStatus.reserved => 'Reserved',
+        ListingStatus.sold => 'Sold',
+        ListingStatus.expired => 'Expired',
+        ListingStatus.cancelled => 'Cancelled',
+        ListingStatus.removed => 'Removed',
+        ListingStatus.suspended => 'Suspended',
+      };
   static ListingStatus fromApi(String value) =>
-      ListingStatus.values.firstWhere((e) => e.apiValue == value);
+      ListingStatus.values.firstWhere((e) => e.apiValue == value, orElse: () => ListingStatus.draft);
 }
 
 /// Mirrors `ListingSort` (`sort_by` query parameter of `GET /v1/listings`).

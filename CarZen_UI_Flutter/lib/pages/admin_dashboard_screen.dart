@@ -1,418 +1,265 @@
-// TODO(Ayush): gap E — no admin dashboard endpoint (counts assembled from list endpoints)
-import 'package:flutter/material.dart';
 import 'package:carzen_flutter/models/enums.dart';
+import 'package:carzen_flutter/models/order_models.dart';
 import 'package:carzen_flutter/models/service_models.dart';
+import 'package:carzen_flutter/pages/my_orders_screen.dart' show orderTone;
 import 'package:carzen_flutter/routes/app_routes.dart';
+import 'package:carzen_flutter/services/admin_listing_service.dart';
 import 'package:carzen_flutter/services/car_service.dart';
 import 'package:carzen_flutter/services/marketplace_service.dart';
 import 'package:carzen_flutter/services/order_service.dart';
 import 'package:carzen_flutter/services/profile_service.dart';
+import 'package:carzen_flutter/services/report_service.dart';
 import 'package:carzen_flutter/services/service_catalog_api.dart';
 import 'package:carzen_flutter/services/service_request_api.dart';
+import 'package:carzen_flutter/services/session_controller.dart';
+import 'package:carzen_flutter/services/transaction_service.dart';
 import 'package:carzen_flutter/theme/app_theme.dart';
-import 'package:carzen_flutter/utils/breakpoints.dart';
-import 'package:carzen_flutter/widgets/carzen_nav_bar.dart';
+import 'package:carzen_flutter/utils/formatters.dart';
+import 'package:carzen_flutter/widgets/admin_widgets.dart';
+import 'package:carzen_flutter/widgets/app_shell.dart';
 import 'package:carzen_flutter/widgets/page_container.dart';
-import 'package:carzen_flutter/widgets/surface_card.dart';
+import 'package:carzen_flutter/widgets/state_views.dart';
+import 'package:carzen_flutter/widgets/status_pill.dart';
+import 'package:flutter/material.dart';
 
-class AdminDashboardMetrics {
-  final int totalCars;
-  final int pendingCars;
-  final int totalUsers;
-  final int activeUsers;
-  final int activeListings;
-  final int totalOrders;
-  final int pendingOrders;
-  final int totalServiceRequests;
-  final int openServiceRequests;
-  final int serviceCatalogCount;
-
-  const AdminDashboardMetrics({
-    required this.totalCars,
-    required this.pendingCars,
-    required this.totalUsers,
-    required this.activeUsers,
-    required this.activeListings,
-    required this.totalOrders,
-    required this.pendingOrders,
-    required this.totalServiceRequests,
-    required this.openServiceRequests,
-    required this.serviceCatalogCount,
-  });
+/// Counts for the dashboard. There is no dashboard endpoint, so each number
+/// is the `total` of a one-item page from the matching admin list; a count
+/// that could not be loaded stays null and shows as a dash.
+class _Metrics {
+  int? pendingCars;
+  int? listingsInReview;
+  int? pendingOrders;
+  int? newServiceRequests;
+  int? newReports;
+  int? users;
+  int? liveListings;
+  int? orders;
+  int? completedSales;
+  int? serviceRequests;
+  int? services;
+  List<OrderRecord> latestOrders = const [];
 }
 
-/// Central administrative dashboard at `/admin`.
 class AdminDashboardScreen extends StatefulWidget {
-  final AdminDashboardMetrics? initialMetrics;
-  const AdminDashboardScreen({super.key, this.initialMetrics});
+  const AdminDashboardScreen({super.key});
 
   @override
   State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
 }
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
-  final _carService = CarService();
-  final _profileService = ProfileService();
-  final _marketplaceService = MarketplaceService();
-  final _orderService = OrderService();
-  final _serviceRequestApi = ServiceRequestApi();
-  final _catalogApi = ServiceCatalogApi();
+  late Future<_Metrics> _future = _load();
 
-  late Future<AdminDashboardMetrics> _future;
-
-  @override
-  void initState() {
-    super.initState();
-    _future = widget.initialMetrics != null ? Future.value(widget.initialMetrics) : _fetchMetrics();
-  }
-
-  void _reload() => setState(() => _future = _fetchMetrics());
-
-  Future<AdminDashboardMetrics> _fetchMetrics() async {
-    int totalCars = 0;
-    int pendingCars = 0;
-    int totalUsers = 0;
-    int activeUsers = 0;
-    int activeListings = 0;
-    int totalOrders = 0;
-    int pendingOrders = 0;
-    int totalServiceRequests = 0;
-    int openServiceRequests = 0;
-    int serviceCatalogCount = 0;
-
-    final tasks = <Future<void>>[
-      _carService.listAdminCars(page: 1, limit: 1).then((res) {
-        totalCars = res.pagination.total;
-      }).catchError((_) {}),
-      _carService.listAdminCars(page: 1, limit: 1, status: CarApprovalStatus.pendingApproval).then((res) {
-        pendingCars = res.pagination.total;
-      }).catchError((_) {}),
-      _profileService.adminListUsers().then((users) {
-        totalUsers = users.length;
-        activeUsers = users.where((u) => u.isActive && !u.isBlocked).length;
-      }).catchError((_) {}),
-      _marketplaceService.listPublicListings(page: 1, limit: 1).then((res) {
-        activeListings = res.pagination.total;
-      }).catchError((_) {}),
-      _orderService.listAdminOrders(page: 1, limit: 1).then((res) {
-        totalOrders = res.pagination.total;
-      }).catchError((_) {}),
-      _orderService.listAdminOrders(page: 1, limit: 1, status: 'pending').then((res) {
-        pendingOrders = res.pagination.total;
-      }).catchError((_) {}),
-      _serviceRequestApi.adminList(page: 1, limit: 1).then((res) {
-        totalServiceRequests = res.pagination.total;
-      }).catchError((_) {}),
-      _serviceRequestApi.adminList(page: 1, limit: 1, status: ServiceRequestStatus.requested).then((res) {
-        openServiceRequests = res.pagination.total;
-      }).catchError((_) {}),
-      _catalogApi.adminList(page: 1, limit: 1).then((res) {
-        serviceCatalogCount = res.pagination.total;
-      }).catchError((_) {}),
-    ];
-
-    await Future.wait(tasks);
-
-    return AdminDashboardMetrics(
-      totalCars: totalCars,
-      pendingCars: pendingCars,
-      totalUsers: totalUsers,
-      activeUsers: activeUsers,
-      activeListings: activeListings,
-      totalOrders: totalOrders,
-      pendingOrders: pendingOrders,
-      totalServiceRequests: totalServiceRequests,
-      openServiceRequests: openServiceRequests,
-      serviceCatalogCount: serviceCatalogCount,
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: const CarZenNavBar(current: NavSection.adminDashboard, title: 'Dashboard'),
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: () async {
-            _reload();
-            await _future;
-          },
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            child: PageContainer(
-              maxWidth: 1100,
-              child: FutureBuilder<AdminDashboardMetrics>(
-                future: _future,
-                builder: (context, snapshot) {
-                  final loading = snapshot.connectionState != ConnectionState.done;
-                  final m = snapshot.data ??
-                      const AdminDashboardMetrics(
-                        totalCars: 0,
-                        pendingCars: 0,
-                        totalUsers: 0,
-                        activeUsers: 0,
-                        activeListings: 0,
-                        totalOrders: 0,
-                        pendingOrders: 0,
-                        totalServiceRequests: 0,
-                        openServiceRequests: 0,
-                        serviceCatalogCount: 0,
-                      );
-
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const PageHeader(
-                        title: 'Admin Dashboard',
-                        subtitle: 'Overview of marketplace cars, orders, service requests, and platform users.',
-                        icon: Icons.dashboard_rounded,
-                      ),
-                      const SizedBox(height: AppSpacing.lg),
-                      _buildNeedsAttentionSection(context, m, loading),
-                      const SizedBox(height: AppSpacing.xl),
-                      Text('System Overview', style: Theme.of(context).textTheme.titleLarge),
-                      const SizedBox(height: AppSpacing.md),
-                      _buildMetricsGrid(context, m, loading),
-                    ],
-                  );
-                },
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNeedsAttentionSection(BuildContext context, AdminDashboardMetrics m, bool loading) {
-    final hasAttention = m.pendingCars > 0 || m.openServiceRequests > 0 || m.pendingOrders > 0;
-
-    return SurfaceCard(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: hasAttention ? AppColors.warning.withValues(alpha: 0.15) : AppColors.cyanTint,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  hasAttention ? Icons.notifications_active_rounded : Icons.check_circle_outline_rounded,
-                  color: hasAttention ? AppColors.warning : AppColors.secondary,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Needs Attention', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-                    Text(
-                      hasAttention
-                          ? 'Operational items awaiting admin review or action'
-                          : 'All items are up to date! No pending approvals.',
-                      style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          if (hasAttention) ...[
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 12,
-              runSpacing: 10,
-              children: [
-                if (m.pendingCars > 0)
-                  _AttentionItem(
-                    label: '${m.pendingCars} car${m.pendingCars == 1 ? '' : 's'} pending approval',
-                    route: AppRoutes.adminCars,
-                    icon: Icons.fact_check_rounded,
-                    tone: AppColors.warning,
-                  ),
-                if (m.openServiceRequests > 0)
-                  _AttentionItem(
-                    label: '${m.openServiceRequests} new service request${m.openServiceRequests == 1 ? '' : 's'}',
-                    route: AppRoutes.adminServiceRequests,
-                    icon: Icons.assignment_late_rounded,
-                    tone: AppColors.favorite,
-                  ),
-                if (m.pendingOrders > 0)
-                  _AttentionItem(
-                    label: '${m.pendingOrders} order${m.pendingOrders == 1 ? '' : 's'} pending confirmation',
-                    route: AppRoutes.adminOrders,
-                    icon: Icons.local_shipping_rounded,
-                    tone: AppColors.secondary,
-                  ),
-              ],
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMetricsGrid(BuildContext context, AdminDashboardMetrics m, bool loading) {
-    final wide = Breakpoints.isExpanded(context);
-    final medium = Breakpoints.isMedium(context);
-    final columns = wide ? 3 : (medium ? 2 : 1);
-
-    final cards = [
-      _MetricTile(
-        title: 'Cars & Approvals',
-        primaryValue: loading ? '...' : '${m.totalCars}',
-        secondaryValue: '${m.pendingCars} pending approval',
-        icon: Icons.directions_car_rounded,
-        route: AppRoutes.adminCars,
-      ),
-      _MetricTile(
-        title: 'Platform Users',
-        primaryValue: loading ? '...' : '${m.totalUsers}',
-        secondaryValue: '${m.activeUsers} active',
-        icon: Icons.group_rounded,
-        route: AppRoutes.adminUsers,
-      ),
-      _MetricTile(
-        title: 'Active Listings',
-        primaryValue: loading ? '...' : '${m.activeListings}',
-        secondaryValue: 'Public on marketplace',
-        icon: Icons.sell_rounded,
-        route: AppRoutes.browse,
-      ),
-      _MetricTile(
-        title: 'Orders',
-        primaryValue: loading ? '...' : '${m.totalOrders}',
-        secondaryValue: '${m.pendingOrders} pending',
-        icon: Icons.local_shipping_rounded,
-        route: AppRoutes.adminOrders,
-      ),
-      _MetricTile(
-        title: 'Service Requests',
-        primaryValue: loading ? '...' : '${m.totalServiceRequests}',
-        secondaryValue: '${m.openServiceRequests} open / requested',
-        icon: Icons.assignment_rounded,
-        route: AppRoutes.adminServiceRequests,
-      ),
-      _MetricTile(
-        title: 'Service Catalog',
-        primaryValue: loading ? '...' : '${m.serviceCatalogCount}',
-        secondaryValue: 'Catalog offerings',
-        icon: Icons.build_circle_rounded,
-        route: AppRoutes.adminServices,
-      ),
-    ];
-
-    if (columns == 1) {
-      return Column(
-        children: [
-          for (final c in cards) ...[c, const SizedBox(height: 12)],
-        ],
-      );
+  Future<_Metrics> _load() async {
+    final m = _Metrics();
+    final cars = CarService();
+    final listings = AdminListingService();
+    final orders = OrderService();
+    final requests = ServiceRequestApi();
+    Future<void> count(Future<int> Function() f, void Function(int) set) async {
+      try {
+        set(await f());
+      } catch (_) {}
     }
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final itemWidth = (constraints.maxWidth - (columns - 1) * 16) / columns;
-        return Wrap(
-          spacing: 16,
-          runSpacing: 16,
-          children: [
-            for (final c in cards) SizedBox(width: itemWidth, child: c),
-          ],
-        );
-      },
-    );
+    await Future.wait([
+      count(() async => (await cars.listAdminCars(limit: 1, status: CarApprovalStatus.pendingApproval)).pagination.total, (v) => m.pendingCars = v),
+      count(() async => (await listings.list(limit: 1, status: ListingStatus.pendingReview.apiValue)).pagination.total, (v) => m.listingsInReview = v),
+      count(() async => (await orders.listAdminOrders(limit: 1, status: 'pending')).pagination.total, (v) => m.pendingOrders = v),
+      count(() async => (await requests.adminList(limit: 1, status: ServiceRequestStatus.requested)).pagination.total, (v) => m.newServiceRequests = v),
+      count(() async => (await ReportService().adminList(limit: 1, status: 'pending')).pagination.total, (v) => m.newReports = v),
+      count(() async => (await ProfileService().adminListUsers()).length, (v) => m.users = v),
+      count(() async => (await MarketplaceService().listPublicListings(page: 1, limit: 1)).pagination.total, (v) => m.liveListings = v),
+      count(() async => (await TransactionService().adminList(limit: 1, status: 'completed')).pagination.total, (v) => m.completedSales = v),
+      count(() async => (await requests.adminList(limit: 1)).pagination.total, (v) => m.serviceRequests = v),
+      count(() async => (await ServiceCatalogApi().adminList(limit: 1)).pagination.total, (v) => m.services = v),
+      () async {
+        try {
+          final res = await orders.listAdminOrders(limit: 6);
+          m.orders = res.pagination.total;
+          m.latestOrders = res.data;
+        } catch (_) {}
+      }(),
+    ]);
+    return m;
   }
-}
 
-class _AttentionItem extends StatelessWidget {
-  final String label;
-  final String route;
-  final IconData icon;
-  final Color tone;
+  Future<void> _refresh() async {
+    setState(() => _future = _load());
+    await _future;
+  }
 
-  const _AttentionItem({
-    required this.label,
-    required this.route,
-    required this.icon,
-    required this.tone,
-  });
+  String _greeting() {
+    final h = DateTime.now().hour;
+    final name = SessionController.instance.user?.firstName;
+    final part = h < 12 ? 'Good morning' : (h < 17 ? 'Good afternoon' : 'Good evening');
+    return name == null ? part : '$part, $name';
+  }
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: () => Navigator.of(context).pushNamed(route),
-      borderRadius: BorderRadius.circular(AppRadii.pill),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: tone.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(AppRadii.pill),
-          border: Border.all(color: tone.withValues(alpha: 0.3)),
-        ),
-        child: Wrap(
-          crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: 6,
-          runSpacing: 4,
-          children: [
-            Icon(icon, size: 16, color: tone),
-            Text(label, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: tone)),
-            Icon(Icons.arrow_forward_rounded, size: 14, color: tone),
-          ],
-        ),
+    return AdminPage(
+      section: NavSection.adminDashboard,
+      title: _greeting(),
+      subtitle: 'Here is what needs a decision on CarZen today.',
+      onRefresh: _refresh,
+      child: FutureBuilder<_Metrics>(
+        future: _future,
+        builder: (context, snap) {
+          final loading = snap.connectionState != ConnectionState.done;
+          final m = snap.data ?? _Metrics();
+          String v(int? n) => loading ? '...' : (n == null ? '-' : formatCount(n));
+          void go(String r) => Navigator.of(context).pushNamed(r).then((_) => _refresh());
+
+          final queue = <_QueueItem>[
+            _QueueItem('Cars waiting for approval', m.pendingCars, Icons.fact_check_outlined, AppRoutes.adminCars, 'Review'),
+            _QueueItem('Listings in review', m.listingsInReview, Icons.storefront_outlined, AppRoutes.adminListings, 'Open'),
+            _QueueItem('Orders waiting for the seller', m.pendingOrders, Icons.receipt_long_outlined, AppRoutes.adminOrders, 'Open'),
+            _QueueItem('New workshop requests', m.newServiceRequests, Icons.assignment_outlined, AppRoutes.adminServiceRequests, 'Respond'),
+            _QueueItem('New reports from buyers', m.newReports, Icons.flag_outlined, AppRoutes.adminReports, 'Review'),
+          ];
+          final open = queue.where((q) => (q.count ?? 0) > 0).length;
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _QueuePanel(items: queue, loading: loading, openCount: open, onGo: go),
+              const SizedBox(height: 28),
+              const SectionTitle('Marketplace at a glance'),
+              ResponsiveGrid(
+                minTileWidth: 220,
+                maxColumns: 3,
+                children: [
+                  StatTile(label: 'Users', value: v(m.users), icon: Icons.group_outlined, onTap: () => go(AppRoutes.adminUsers)),
+                  StatTile(label: 'Cars on sale', value: v(m.liveListings), icon: Icons.directions_car_outlined, onTap: () => go(AppRoutes.adminListings)),
+                  StatTile(label: 'Orders', value: v(m.orders), icon: Icons.receipt_long_outlined, onTap: () => go(AppRoutes.adminOrders)),
+                  StatTile(label: 'Completed sales', value: v(m.completedSales), icon: Icons.account_balance_wallet_outlined, onTap: () => go(AppRoutes.adminTransactions)),
+                  StatTile(label: 'Workshop requests', value: v(m.serviceRequests), icon: Icons.build_outlined, onTap: () => go(AppRoutes.adminServiceRequests)),
+                  StatTile(label: 'Workshop services', value: v(m.services), icon: Icons.handyman_outlined, onTap: () => go(AppRoutes.adminServices)),
+                ],
+              ),
+              const SizedBox(height: 28),
+              SectionTitle(
+                'Latest orders',
+                trailing: TextButton(onPressed: () => go(AppRoutes.adminOrders), child: const Text('All orders')),
+              ),
+              if (loading)
+                const Column(children: [SkeletonLine(), SizedBox(height: 12), SkeletonLine(), SizedBox(height: 12), SkeletonLine()])
+              else if (m.latestOrders.isEmpty)
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(AppRadii.lg),
+                    border: Border.all(color: AppColors.divider),
+                  ),
+                  child: const EmptyStateView(compact: true, icon: Icons.receipt_long_outlined, title: 'No orders yet', message: 'Orders appear here as buyers place them.'),
+                )
+              else
+                AdminTable<OrderRecord>(
+                  items: m.latestOrders,
+                  onTap: (_) => go(AppRoutes.adminOrders),
+                  cardTitle: (o) => Text(o.listingTitle),
+                  cardBadge: (o) => StatusPill(label: humanizeStatus(o.status), tone: orderTone(o.status)),
+                  columns: [
+                    AdminColumn('Car', (o) => StackedCell(o.listingTitle, 'Order #${o.id}'), flex: 5, showInCard: false),
+                    AdminColumn('Buyer', (o) => TextCell(o.buyer?.displayName ?? 'User #${o.buyerId}'), flex: 3),
+                    AdminColumn('Amount', (o) => Text(formatLakh(o.amount), style: AppText.figures(14)), flex: 2),
+                    AdminColumn('Placed', (o) => TextCell(formatRelative(o.createdAt)), flex: 2),
+                    AdminColumn('Status', (o) => StatusPill(label: humanizeStatus(o.status), tone: orderTone(o.status)), flex: 2, showInCard: false),
+                  ],
+                ),
+            ],
+          );
+        },
       ),
     );
   }
 }
 
-class _MetricTile extends StatelessWidget {
-  final String title;
-  final String primaryValue;
-  final String secondaryValue;
+class _QueueItem {
+  final String label;
+  final int? count;
   final IconData icon;
   final String route;
+  final String action;
+  const _QueueItem(this.label, this.count, this.icon, this.route, this.action);
+}
 
-  const _MetricTile({
-    required this.title,
-    required this.primaryValue,
-    required this.secondaryValue,
-    required this.icon,
-    required this.route,
-  });
+class _QueuePanel extends StatelessWidget {
+  final List<_QueueItem> items;
+  final bool loading;
+  final int openCount;
+  final ValueChanged<String> onGo;
+
+  const _QueuePanel({required this.items, required this.loading, required this.openCount, required this.onGo});
 
   @override
   Widget build(BuildContext context) {
-    return SurfaceCard(
-      onTap: () => Navigator.of(context).pushNamed(route),
-      padding: const EdgeInsets.all(20),
+    return Container(
+      decoration: BoxDecoration(color: AppColors.ink, borderRadius: BorderRadius.circular(AppRadii.xl)),
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.textSecondary)),
-              Container(
-                width: 38,
-                height: 38,
-                decoration: const BoxDecoration(color: AppColors.cyanTint, shape: BoxShape.circle),
-                child: Icon(icon, color: AppColors.secondary, size: 20),
-              ),
-            ],
+          Text(
+            loading ? 'Checking the queues...' : (openCount == 0 ? 'All queues are clear' : 'Waiting for you'),
+            style: AppText.heading(18, color: Colors.white),
           ),
-          const SizedBox(height: 12),
-          Text(primaryValue, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 28, color: AppColors.primary)),
           const SizedBox(height: 4),
-          Text(secondaryValue, style: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary)),
+          Text(
+            loading ? ' ' : (openCount == 0 ? 'Nothing needs a decision right now.' : '$openCount queue${openCount == 1 ? '' : 's'} with items to handle.'),
+            style: const TextStyle(color: Color(0xFFB9C6D8), fontSize: 13.5),
+          ),
+          const SizedBox(height: 10),
+          for (var i = 0; i < items.length; i++) ...[
+            if (i > 0) const Divider(height: 1, color: Color(0x22FFFFFF)),
+            _QueueRow(item: items[i], loading: loading, onGo: onGo),
+          ],
         ],
+      ),
+    );
+  }
+}
+
+class _QueueRow extends StatelessWidget {
+  final _QueueItem item;
+  final bool loading;
+  final ValueChanged<String> onGo;
+  const _QueueRow({required this.item, required this.loading, required this.onGo});
+
+  @override
+  Widget build(BuildContext context) {
+    final n = item.count;
+    final has = (n ?? 0) > 0;
+    return InkWell(
+      onTap: () => onGo(item.route),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        child: Row(
+          children: [
+            Icon(item.icon, color: has ? AppColors.plate : const Color(0xFF7F91A8), size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                item.label,
+                style: TextStyle(color: has ? Colors.white : const Color(0xFFB9C6D8), fontWeight: has ? FontWeight.w600 : FontWeight.w400, fontSize: 14.5),
+              ),
+            ),
+            const SizedBox(width: 12),
+            if (loading)
+              const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white54))
+            else if (has)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                decoration: BoxDecoration(color: AppColors.plate, borderRadius: BorderRadius.circular(AppRadii.xs)),
+                child: Text(formatCount(n!), style: AppText.figures(14, color: AppColors.ink, weight: FontWeight.w700)),
+              )
+            else
+              Text(n == null ? 'Unavailable' : 'None', style: const TextStyle(color: Color(0xFF7F91A8), fontSize: 13)),
+            const SizedBox(width: 6),
+            const Icon(Icons.chevron_right, color: Color(0xFF7F91A8), size: 20),
+          ],
+        ),
       ),
     );
   }

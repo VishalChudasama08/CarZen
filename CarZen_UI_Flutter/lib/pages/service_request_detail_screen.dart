@@ -1,3 +1,4 @@
+import 'package:carzen_flutter/widgets/app_shell.dart';
 import 'package:flutter/material.dart';
 import 'package:carzen_flutter/config/payment_limits.dart';
 import 'package:carzen_flutter/models/service_models.dart';
@@ -8,7 +9,6 @@ import 'package:carzen_flutter/services/service_request_api.dart';
 import 'package:carzen_flutter/theme/app_theme.dart';
 import 'package:carzen_flutter/utils/breakpoints.dart';
 import 'package:carzen_flutter/utils/formatters.dart';
-import 'package:carzen_flutter/widgets/carzen_nav_bar.dart';
 import 'package:carzen_flutter/widgets/page_container.dart';
 import 'package:carzen_flutter/widgets/service_widgets.dart';
 import 'package:carzen_flutter/widgets/state_views.dart';
@@ -166,13 +166,10 @@ class _ServiceRequestDetailScreenState extends State<ServiceRequestDetailScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: const CarZenNavBar(
-        current: NavSection.services,
-        title: 'Service request',
-        fallbackRoute: AppRoutes.serviceRequests,
-      ),
+    return AppScaffold(
+      section: NavSection.services,
+      title: 'Service booking',
+      fallbackRoute: AppRoutes.serviceRequests,
       body: SafeArea(
         child: FutureBuilder<ServiceRequestRecord>(
           future: _future,
@@ -410,7 +407,7 @@ class _ServiceRequestDetailScreenState extends State<ServiceRequestDetailScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Payment Paid · ${method == 'online' ? 'Online (Razorpay)' : 'Cash at Workshop'}',
+                          'Payment Paid  |  ${method == 'online' ? 'Online (Razorpay)' : 'Cash at Workshop'}',
                           style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF1B5E20), fontSize: 15),
                         ),
                         const SizedBox(height: 2),
@@ -439,7 +436,7 @@ class _ServiceRequestDetailScreenState extends State<ServiceRequestDetailScreen>
                     children: [
                       Icon(Icons.payments_outlined, color: AppColors.secondary, size: 22),
                       SizedBox(width: 8),
-                      Text('Cash Payment Pending', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5)),
+                      Expanded(child: Text('Cash Payment Pending', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5))),
                     ],
                   ),
                   const SizedBox(height: 6),

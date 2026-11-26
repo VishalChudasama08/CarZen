@@ -1,31 +1,56 @@
-import 'package:flutter/material.dart';
 import 'package:carzen_flutter/theme/app_theme.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
-/// Styled text field shared by Login and Register — same rounded card
-/// look as the rest of CarZen (matches [CarSearchBar]'s container style)
-/// so auth screens feel consistent with the Home page.
+/// Labelled form field used across the app: the label sits above the input
+/// (always visible, read by screen readers), required fields are marked, and
+/// password fields get a show/hide toggle.
 class AuthTextField extends StatefulWidget {
   final TextEditingController controller;
   final String label;
-  final String hint;
-  final IconData icon;
+  final String? hint;
+  final IconData? icon;
   final bool isPassword;
-  final TextInputType keyboardType;
+  final bool required;
+  final TextInputType? keyboardType;
   final TextInputAction textInputAction;
   final String? Function(String?)? validator;
   final AutovalidateMode autovalidateMode;
+  final Iterable<String>? autofillHints;
+  final ValueChanged<String>? onSubmitted;
+  final ValueChanged<String>? onChanged;
+  final String? helper;
+  final int maxLines;
+  final int? maxLength;
+  final bool enabled;
+  final Widget? suffix;
+  final TextCapitalization textCapitalization;
+  final List<TextInputFormatter>? inputFormatters;
+  final FocusNode? focusNode;
 
   const AuthTextField({
     super.key,
     required this.controller,
     required this.label,
-    required this.hint,
-    required this.icon,
+    this.hint,
+    this.icon,
     this.isPassword = false,
-    this.keyboardType = TextInputType.text,
+    this.required = false,
+    this.keyboardType,
     this.textInputAction = TextInputAction.next,
     this.validator,
     this.autovalidateMode = AutovalidateMode.onUserInteraction,
+    this.autofillHints,
+    this.onSubmitted,
+    this.onChanged,
+    this.helper,
+    this.maxLines = 1,
+    this.maxLength,
+    this.enabled = true,
+    this.suffix,
+    this.textCapitalization = TextCapitalization.none,
+    this.inputFormatters,
+    this.focusNode,
   });
 
   @override
@@ -37,86 +62,93 @@ class _AuthTextFieldState extends State<AuthTextField> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Text(
-        //   widget.label,
-        //   style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-        // ),
-        RichText(
-          text: TextSpan(
-            children: [
-              TextSpan(
-                text: widget.label.replaceAll(' *', ''),
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              if (widget.label.endsWith(' *'))
-                TextSpan(
-                  text: ' *',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.normal,
-                    color: AppColors.textPrimary.withValues(alpha: 0.8),
-                  ),
-                ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 6),
-        TextFormField(
-          controller: widget.controller,
-          obscureText: widget.isPassword && _obscure,
-          keyboardType: widget.keyboardType,
-          textInputAction: widget.textInputAction,
-          validator: widget.validator,
-          autovalidateMode: widget.autovalidateMode,
-          style: const TextStyle(fontSize: 14.5, color: AppColors.textPrimary),
-          decoration: InputDecoration(
-            hintText: widget.hint,
-            hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
-            prefixIcon: Icon(widget.icon, size: 20, color: AppColors.textSecondary),
-            suffixIcon: widget.isPassword
-                ? IconButton(
-                    icon: Icon(
-                      _obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                      size: 20,
-                      color: AppColors.textSecondary,
-                    ),
-                    onPressed: () => setState(() => _obscure = !_obscure),
-                  )
-                : null,
-            filled: true,
-            fillColor: AppColors.surface,
-            contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(color: AppColors.divider),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(color: AppColors.divider),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(color: AppColors.secondary, width: 1.4),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(color: AppColors.favorite),
-            ),
-            focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(color: AppColors.favorite, width: 1.4),
+    // Accept legacy "Label *" strings as well as the [required] flag.
+    final rawLabel = widget.label;
+    final required = widget.required || rawLabel.endsWith(' *');
+    final label = rawLabel.replaceAll(' *', '');
+
+    final effectiveKeyboardType = widget.keyboardType ??
+        (widget.isPassword
+            ? TextInputType.visiblePassword
+            : (widget.maxLines > 1 ? TextInputType.multiline : TextInputType.text));
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          FieldLabel(label, required: required),
+          const SizedBox(height: 6),
+          TextFormField(
+            controller: widget.controller,
+            focusNode: widget.focusNode,
+            obscureText: widget.isPassword && _obscure,
+            enableSuggestions: !widget.isPassword,
+            autocorrect: !widget.isPassword,
+            keyboardType: effectiveKeyboardType,
+            textInputAction: widget.maxLines > 1 ? TextInputAction.newline : widget.textInputAction,
+            validator: widget.validator,
+            autovalidateMode: widget.autovalidateMode,
+            autofillHints: widget.autofillHints,
+            inputFormatters: widget.inputFormatters,
+            onFieldSubmitted: widget.onSubmitted,
+            onChanged: widget.onChanged,
+            maxLines: widget.isPassword ? 1 : widget.maxLines,
+            minLines: widget.maxLines > 1 ? 3 : null,
+            maxLength: widget.maxLength,
+            enabled: widget.enabled,
+            textCapitalization: widget.textCapitalization,
+            style: const TextStyle(fontSize: 15, color: AppColors.textPrimary),
+            decoration: InputDecoration(
+              hintText: widget.hint,
+              helperText: widget.helper,
+              helperMaxLines: 3,
+              errorMaxLines: 3,
+              prefixIcon: widget.icon == null ? null : Icon(widget.icon, size: 20),
+              suffixIcon: widget.isPassword
+                  ? IconButton(
+                      tooltip: _obscure ? 'Show password' : 'Hide password',
+                      icon: Icon(_obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined, size: 20),
+                      onPressed: () {
+                        final sel = widget.controller.selection;
+                        setState(() => _obscure = !_obscure);
+                        if (sel.isValid) {
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (mounted) widget.controller.selection = sel;
+                          });
+                        }
+                      },
+                    )
+                  : widget.suffix,
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Field label with an optional "required" marker that is spelled out for
+/// screen readers.
+class FieldLabel extends StatelessWidget {
+  final String text;
+  final bool required;
+  const FieldLabel(this.text, {super.key, this.required = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: required ? '$text, required' : text,
+      excludeSemantics: true,
+      child: Text.rich(
+        TextSpan(
+          text: text,
+          style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+          children: [
+            if (required) const TextSpan(text: ' *', style: TextStyle(color: AppColors.danger, fontWeight: FontWeight.w600)),
+          ],
         ),
-        const SizedBox(height: 16),
-      ],
+      ),
     );
   }
 }

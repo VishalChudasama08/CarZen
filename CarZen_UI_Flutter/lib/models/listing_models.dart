@@ -70,6 +70,11 @@ class ListingCar {
   final String city;
   final String state;
   final num? expectedMarketPrice;
+  final String? insuranceCompany;
+  final String? insuranceType;
+  final DateTime? insuranceExpiry;
+  final String? rcStatus;
+  final String? description;
   final List<CarMedia> media;
   final List<CarFeature> features;
 
@@ -95,6 +100,11 @@ class ListingCar {
     required this.city,
     required this.state,
     this.expectedMarketPrice,
+    this.insuranceCompany,
+    this.insuranceType,
+    this.insuranceExpiry,
+    this.rcStatus,
+    this.description,
     required this.media,
     required this.features,
   });
@@ -127,6 +137,11 @@ class ListingCar {
       city: json['city'] as String,
       state: json['state'] as String,
       expectedMarketPrice: parseNumOrNull(json['expected_market_price']),
+      insuranceCompany: json['insurance_company'] as String?,
+      insuranceType: json['insurance_type'] as String?,
+      insuranceExpiry: json['insurance_expiry'] is String ? DateTime.tryParse(json['insurance_expiry'] as String) : null,
+      rcStatus: json['rc_status'] as String?,
+      description: json['description'] as String?,
       media: (json['media'] as List<dynamic>? ?? [])
           .map((e) => CarMedia.fromJson(e as Map<String, dynamic>))
           .toList(),
@@ -137,8 +152,7 @@ class ListingCar {
   }
 }
 
-/// Summary of seller returned if backend adds `seller` to ListingResponseSecond.
-/// // TODO(Ayush): gap A — seller info for buyers
+/// Seller summary, read if the backend includes one in a listing response.
 class SellerSummary {
   final int? id;
   final String? name;
@@ -178,7 +192,6 @@ class SellerSummary {
 /// snapshot, unlike the plain [Listing] used in the list view.
 class ListingDetail extends Listing {
   final ListingCar car;
-  // TODO(Ayush): gap A — seller info for buyers
   final SellerSummary? seller;
 
   const ListingDetail({

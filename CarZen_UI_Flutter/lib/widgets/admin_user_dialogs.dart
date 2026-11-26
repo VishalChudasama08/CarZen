@@ -1,7 +1,5 @@
-// TODO(Ayush): gap B — blocked/deleted users and their cars
 import 'package:flutter/material.dart';
 import 'package:carzen_flutter/models/user_response.dart';
-import 'package:carzen_flutter/routes/app_routes.dart';
 import 'package:carzen_flutter/theme/app_theme.dart';
 
 /// Backend `UserStatus` values (`active`, `inactive`, `blocked`).
@@ -15,7 +13,6 @@ Future<({String? role, String? status})?> showUserRoleStatusDialog(BuildContext 
     showDialog<({String? role, String? status})>(context: context, builder: (_) => _StatusDialog(user: user));
 
 /// Asks before `DELETE /v1/admin/users/{id}`.
-/// // TODO(Ayush): gap B — blocked/deleted users and their cars (listings not automatically hidden)
 Future<bool> confirmDeleteUser(BuildContext context, UserResponse user) async {
   final confirmed = await showDialog<bool>(
     context: context,
@@ -26,25 +23,16 @@ Future<bool> confirmDeleteUser(BuildContext context, UserResponse user) async {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '${user.fullName} will lose access and be deactivated.\n\n'
-            'Important: Their existing listings are not changed automatically.',
+            '${user.fullName} will lose access to CarZen.\n\n'
+            'Their cars and listings are not changed automatically. Review them on the user page first.',
             style: const TextStyle(height: 1.45),
-          ),
-          const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: () {
-              Navigator.pop(context, false);
-              Navigator.of(context).pushNamed(AppRoutes.adminCars);
-            },
-            icon: const Icon(Icons.directions_car_rounded, size: 16),
-            label: const Text("Review user's cars"),
           ),
         ],
       ),
       actions: [
         TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
         FilledButton(
-          style: FilledButton.styleFrom(backgroundColor: AppColors.favorite),
+          style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
           onPressed: () => Navigator.pop(context, true),
           child: const Text('Delete user'),
         ),
@@ -80,8 +68,9 @@ class _StatusDialogState extends State<_StatusDialog> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               DropdownButtonFormField<String>(
+                style: const TextStyle(fontSize: 15, color: AppColors.textPrimary, fontFamily: AppText.body),
                 initialValue: _status,
-                decoration: const InputDecoration(labelText: 'Account Status'),
+                decoration: const InputDecoration(labelText: 'Account status'),
                 items: [for (final s in kUserStatuses) DropdownMenuItem(value: s, child: Text(_cap(s)))],
                 onChanged: (v) => setState(() => _status = v ?? _status),
               ),
@@ -90,23 +79,25 @@ class _StatusDialogState extends State<_StatusDialog> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppColors.favorite.withValues(alpha: 0.1),
+                    color: AppColors.danger.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(AppRadii.md),
-                    border: Border.all(color: AppColors.favorite.withValues(alpha: 0.3)),
+                    border: Border.all(color: AppColors.danger.withValues(alpha: 0.3)),
                   ),
                   child: const Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.warning_amber_rounded, size: 18, color: AppColors.favorite),
+                          Icon(Icons.warning_amber_rounded, size: 18, color: AppColors.danger),
                           SizedBox(width: 6),
-                          Text('Listings Notice', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.favorite)),
+                          Expanded(
+                            child: Text('Listings stay as they are', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.danger)),
+                          ),
                         ],
                       ),
                       SizedBox(height: 4),
                       Text(
-                        'Their existing listings are not changed automatically. You can review them in Car Approvals.',
+                        'Suspend their listings separately from the user page if needed.',
                         style: TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.4),
                       ),
                     ],

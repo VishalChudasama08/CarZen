@@ -62,7 +62,12 @@ class InquiryRecord {
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final Listing listing;
-  final PersonSummary seller;
+
+  /// Present on buyer-side responses (`/buyer/inquiries`).
+  final PersonSummary? seller;
+
+  /// Present on seller-side responses (`/seller/inquiries`).
+  final PersonSummary? buyer;
   final List<InquiryMessage> messages;
 
   const InquiryRecord({
@@ -76,7 +81,8 @@ class InquiryRecord {
     this.createdAt,
     this.updatedAt,
     required this.listing,
-    required this.seller,
+    this.seller,
+    this.buyer,
     this.messages = const [],
   });
 
@@ -91,13 +97,19 @@ class InquiryRecord {
         createdAt: parseDateTime(json['created_at']),
         updatedAt: parseDateTime(json['updated_at']),
         listing: Listing.fromJson(json['listing'] as Map<String, dynamic>),
-        seller: PersonSummary.fromJson(json['seller'] as Map<String, dynamic>),
+        seller: json['seller'] is Map<String, dynamic> ? PersonSummary.fromJson(json['seller'] as Map<String, dynamic>) : null,
+        buyer: json['buyer'] is Map<String, dynamic> ? PersonSummary.fromJson(json['buyer'] as Map<String, dynamic>) : null,
         messages: (json['messages'] as List<dynamic>? ?? [])
             .map((e) => InquiryMessage.fromJson(e as Map<String, dynamic>))
             .toList(),
       );
 
   String get title => (subject != null && subject!.trim().isNotEmpty) ? subject! : listing.title;
+
+  /// The other person in the conversation.
+  PersonSummary? get counterpart => buyer ?? seller;
+
+  bool get isOpen => status != 'closed';
 }
 
 /// Mirrors `NotificationResponse`. [type] is one of `order`, `payment`,

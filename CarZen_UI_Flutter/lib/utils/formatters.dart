@@ -8,15 +8,42 @@ final DateFormat _date = DateFormat('d MMM y');
 /// `1680000` -> `₹16,80,000` (Indian digit grouping).
 String formatInr(num value) => _inr.format(value);
 
+/// Short Indian price: `416000` -> `₹4.16 lakh`, `12500000` -> `₹1.25 crore`.
+/// Values under one lakh are shown in full.
+String formatLakh(num value) {
+  if (value >= 10000000) return '₹${_trim2(value / 10000000)} crore';
+  if (value >= 100000) return '₹${_trim2(value / 100000)} lakh';
+  return formatInr(value);
+}
+
+String _trim2(num v) {
+  final s = v.toStringAsFixed(2);
+  return s.endsWith('.00') ? s.substring(0, s.length - 3) : (s.endsWith('0') ? s.substring(0, s.length - 1) : s);
+}
+
 /// `24100.0` -> `24,100 km`.
 String formatKm(num value) => '${_grouped.format(value.round())} km';
 
 /// Whole numbers with Indian grouping, e.g. engine capacity.
 String formatCount(num value) => _grouped.format(value.round());
 
-String formatDateTime(DateTime? value) => value == null ? '' : _dateTime.format(value);
+String formatDateTime(DateTime? value) => value == null ? '' : _dateTime.format(value.toLocal());
 
-String formatDate(DateTime? value) => value == null ? '' : _date.format(value);
+String formatDate(DateTime? value) => value == null ? '' : _date.format(value.toLocal());
+
+/// "Just now", "5 min ago", "3 h ago", "Yesterday", "4 days ago", or the date.
+String formatRelative(DateTime? value) {
+  if (value == null) return '';
+  final now = DateTime.now();
+  final local = value.toLocal();
+  final diff = now.difference(local);
+  if (diff.inMinutes < 1) return 'Just now';
+  if (diff.inMinutes < 60) return '${diff.inMinutes} min ago';
+  if (diff.inHours < 24) return '${diff.inHours} h ago';
+  if (diff.inDays == 1) return 'Yesterday';
+  if (diff.inDays < 7) return '${diff.inDays} days ago';
+  return formatDate(local);
+}
 
 /// Backend timestamps look like `2026-09-17T17:15:00`.
 DateTime? parseDateTime(Object? value) => value is String ? DateTime.tryParse(value) : null;

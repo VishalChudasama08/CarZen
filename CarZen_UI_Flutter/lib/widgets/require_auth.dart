@@ -4,20 +4,19 @@ import 'package:carzen_flutter/routes/app_routes.dart';
 import 'package:carzen_flutter/services/auth_exception.dart';
 import 'package:carzen_flutter/services/auth_service.dart';
 import 'package:carzen_flutter/services/session_controller.dart';
-import 'package:carzen_flutter/widgets/carzen_nav_bar.dart';
+import 'package:carzen_flutter/widgets/app_shell.dart';
 import 'package:carzen_flutter/widgets/state_views.dart';
 import 'package:flutter/material.dart';
 
-/// Guards a protected page. Validation happens here, when the protected page
-/// is opened (never at app start-up), through the existing
-/// [AuthService.validateToken].
+/// Guards a protected page. The session is validated here, when the page
+/// opens (never at app start-up), through [AuthService.validateToken].
 ///
 /// * valid session      -> shows [child]
-/// * no/expired session -> "Sign in required" state with Login / Register
-/// * server unreachable -> error + Retry (the stored session is kept)
-/// * [adminOnly] but the account is not an admin -> "Admins only" state
-/// * [userOnly] (marketplace pages) but the account is an admin -> explanation
-///   with a link to the admin area, instead of a confusing 403
+/// * no/expired session -> "Log in to continue" with Log in / Create account
+/// * server unreachable -> error + Try again (the stored session is kept)
+/// * [adminOnly] but the account is not an admin -> "Admins only"
+/// * [userOnly] but the account is an admin -> explanation and a link to the
+///   admin console, instead of a confusing 403 from the API
 class RequireAuth extends StatefulWidget {
   final Widget child;
   final bool adminOnly;
@@ -31,13 +30,7 @@ class RequireAuth extends StatefulWidget {
 
 class _RequireAuthState extends State<RequireAuth> {
   final AuthService _auth = AuthService();
-  late Future<UserResponse?> _future;
-
-  @override
-  void initState() {
-    super.initState();
-    _future = _auth.validateToken();
-  }
+  late Future<UserResponse?> _future = _auth.validateToken();
 
   void _recheck() {
     setState(() => _future = _auth.validateToken());
@@ -51,7 +44,7 @@ class _RequireAuthState extends State<RequireAuth> {
     if (signedIn == true && mounted) _recheck();
   }
 
-  Widget _frame(Widget body) => Scaffold(appBar: const CarZenNavBar(), body: SafeArea(child: body));
+  Widget _frame(Widget body) => AppScaffold(section: NavSection.none, body: SafeArea(child: body));
 
   @override
   Widget build(BuildContext context) {
@@ -63,23 +56,23 @@ class _RequireAuthState extends State<RequireAuth> {
         }
         if (snapshot.hasError) {
           final error = snapshot.error;
-          final message = error is AuthException ? error.message : 'Could not verify your session.';
+          final message = error is AuthException ? error.message : 'We could not check your session. Check your connection and try again.';
           return _frame(ErrorStateView(message: message, onRetry: _recheck));
         }
         final user = snapshot.data;
         if (user == null) {
           return _frame(EmptyStateView(
-            icon: Icons.lock_outline_rounded,
-            title: 'Sign in required',
-            message: 'Log in or create a free account to continue.',
+            icon: Icons.lock_outline,
+            title: 'Log in to continue',
+            message: 'This page is part of your CarZen account. Log in, or create a free account in a minute.',
             action: Wrap(
               spacing: 12,
-              runSpacing: 8,
+              runSpacing: 10,
               alignment: WrapAlignment.center,
               children: [
                 FilledButton(onPressed: _openLogin, child: const Text('Log in')),
                 OutlinedButton(
-                  onPressed: () => Navigator.of(context).pushNamed('/Register'),
+                  onPressed: () => Navigator.of(context).pushNamed(AppRoutes.register),
                   child: const Text('Create account'),
                 ),
               ],
@@ -87,20 +80,21 @@ class _RequireAuthState extends State<RequireAuth> {
           ));
         }
         if (widget.adminOnly && !user.isAdmin) {
-          return _frame(const EmptyStateView(
-            icon: Icons.admin_panel_settings_outlined,
+          return _frame(EmptyStateView(
+            icon: Icons.shield_outlined,
             title: 'Admins only',
-            message: 'Your account does not have access to this area.',
+            message: 'Your account does not have access to the admin console.',
+            action: FilledButton(onPressed: () => AppNav.goFrom(context, AppRoutes.home), child: const Text('Go to home')),
           ));
         }
         if (widget.userOnly && user.isAdmin) {
           return _frame(EmptyStateView(
-            icon: Icons.admin_panel_settings_outlined,
+            icon: Icons.shield_outlined,
             title: 'Not available for admin accounts',
-            message: 'Buying, selling and messaging are done from user accounts. Admins manage users, cars and orders.',
+            message: 'Buying, selling, messaging and workshop bookings are done from customer accounts. Manage the marketplace from the admin console.',
             action: FilledButton(
-              onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.adminUsers, (r) => false),
-              child: const Text('Go to Users'),
+              onPressed: () => AppNav.goFrom(context, AppRoutes.admin),
+              child: const Text('Open admin console'),
             ),
           ));
         }

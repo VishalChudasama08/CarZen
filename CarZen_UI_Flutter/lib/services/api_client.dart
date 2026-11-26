@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:carzen_flutter/config/api_config.dart';
 import 'api_exception.dart';
 import 'secure_storage_service.dart';
+import 'session_controller.dart';
 
 /// Thin wrapper around [http.Client] shared by every service that talks to
 /// a protected (`Authorization: Bearer <token>`) or public `/v1/...`
@@ -79,6 +80,18 @@ class ApiClient {
     return _decode(response);
   }
 
+  /// GET returning raw bytes (e.g. a PDF invoice).
+  Future<List<int>> getBytes(String path) async {
+    final response = await _run(() async {
+      final headers = await _headers();
+      headers['Accept'] = '*/*';
+      return _client.get(_uri(path), headers: headers).timeout(ApiConfig.uploadTimeout);
+    });
+    if (response.statusCode >= 200 && response.statusCode < 300) return response.bodyBytes;
+    _decode(response);
+    return const [];
+  }
+
   /// Multipart POST — used only by car media upload
   /// (`POST /v1/cars/{id}/media`), which expects a file plus form fields.
   Future<dynamic> postMultipart(
@@ -93,7 +106,7 @@ class ApiClient {
         ..headers.addAll(headers)
         ..fields.addAll(fields)
         ..files.add(http.MultipartFile.fromBytes('file', fileBytes, filename: fileName));
-      final streamed = await _client.send(request).timeout(ApiConfig.requestTimeout);
+      final streamed = await _client.send(request).timeout(ApiConfig.uploadTimeout);
       return http.Response.fromStream(streamed);
     });
     return _decode(response);
@@ -143,6 +156,7 @@ class ApiClient {
       // The stored token is expired or invalid: drop it so the UI stops
       // presenting the user as signed in.
       unawaited(_storage.deleteToken());
+      SessionController.instance.handleSessionExpired();
       throw const ApiException('Your session has expired. Please log in again.', statusCode: 401);
     }
     if (status == 403) {

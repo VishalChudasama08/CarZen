@@ -1,20 +1,21 @@
-import 'package:carzen_flutter/models/car_models.dart';
 import 'package:carzen_flutter/config/api_config.dart';
+import 'package:carzen_flutter/models/car_models.dart';
+import 'package:carzen_flutter/models/enums.dart';
 import 'package:carzen_flutter/models/listing_models.dart';
 import 'package:carzen_flutter/routes/app_routes.dart';
 import 'package:carzen_flutter/services/api_exception.dart';
 import 'package:carzen_flutter/services/marketplace_service.dart';
 import 'package:carzen_flutter/theme/app_theme.dart';
+import 'package:carzen_flutter/utils/breakpoints.dart';
 import 'package:carzen_flutter/utils/formatters.dart';
-import 'package:carzen_flutter/widgets/carzen_nav_bar.dart';
+import 'package:carzen_flutter/widgets/app_shell.dart';
+import 'package:carzen_flutter/widgets/listing_card.dart';
 import 'package:carzen_flutter/widgets/network_photo.dart';
 import 'package:carzen_flutter/widgets/page_container.dart';
 import 'package:carzen_flutter/widgets/state_views.dart';
-import 'package:carzen_flutter/widgets/surface_card.dart';
 import 'package:flutter/material.dart';
 
-/// The signed-in user's favorited cars — `GET /v1/users/me/favorites`.
-/// That endpoint returns one plain list (no pages), so everything is shown.
+/// Saved cars - `GET /v1/users/me/favorites` (one plain list, no pages).
 class FavoritesScreen extends StatefulWidget {
   const FavoritesScreen({super.key});
 
@@ -23,160 +24,218 @@ class FavoritesScreen extends StatefulWidget {
 }
 
 class _FavoritesScreenState extends State<FavoritesScreen> {
-  final _marketplaceService = MarketplaceService();
-  late Future<List<Favorite>> _future;
+  final _service = MarketplaceService();
+  late Future<List<Favorite>> _future = _service.listFavorites();
   final Set<int> _busy = {};
+  final Set<int> _removed = {};
 
-  @override
-  void initState() {
-    super.initState();
-    _future = _marketplaceService.listFavorites();
+  Future<void> _refresh() async {
+    setState(() {
+      _removed.clear();
+      _future = _service.listFavorites();
+    });
+    await _future;
   }
 
-  void _refresh() => setState(() => _future = _marketplaceService.listFavorites());
-
-  /// Favorites are stored per car, but the details page is addressed by
-  /// listing id, so the listing is looked up first.
-  Future<void> _openDetails(int carId) async {
+  /// Favorites are stored per car; the car page is addressed by listing.
+  Future<void> _open(ListingCar car) async {
+    if (_busy.contains(car.id)) return;
+    setState(() => _busy.add(car.id));
     try {
-      final listingId = await _marketplaceService.findPublicListingIdForCar(carId);
+      final listingId = await _service.findPublicListingIdForCar(car.id);
       if (!mounted) return;
       if (listingId == null) {
-        showAppSnack(context, 'This car is no longer listed for sale.');
+        showAppSnack(context, 'This car is not on sale right now.');
         return;
       }
-      Navigator.of(context).pushNamed(AppRoutes.carDetails(listingId));
-    } on ApiException catch (e) {
-      if (mounted) showAppSnack(context, e.message, error: true);
-    }
-  }
-
-  Future<void> _remove(int carId) async {
-    setState(() => _busy.add(carId));
-    try {
-      await _marketplaceService.removeFavorite(carId);
-      if (!mounted) return;
-      showAppSnack(context, 'Removed from favorites.');
-      _refresh();
+      Navigator.of(context).pushNamed(AppRoutes.carDetails(listingId, '${car.brandName} ${car.modelName}'));
     } on ApiException catch (e) {
       if (mounted) showAppSnack(context, e.message, error: true);
     } finally {
-      if (mounted) setState(() => _busy.remove(carId));
+      if (mounted) setState(() => _busy.remove(car.id));
+    }
+  }
+
+  Future<void> _remove(ListingCar car) async {
+    setState(() => _busy.add(car.id));
+    try {
+      await _service.removeFavorite(car.id);
+      if (!mounted) return;
+      setState(() => _removed.add(car.id));
+      showAppSnack(
+        context,
+        'Removed from saved cars',
+        action: SnackBarAction(
+          label: 'Undo',
+          textColor: AppColors.plate,
+          onPressed: () async {
+            try {
+              await _service.addFavorite(car.id);
+              if (mounted) setState(() => _removed.remove(car.id));
+            } on ApiException catch (e) {
+              if (mounted) showAppSnack(context, e.message, error: true);
+            }
+          },
+        ),
+      );
+    } on ApiException catch (e) {
+      if (mounted) showAppSnack(context, e.message, error: true);
+    } finally {
+      if (mounted) setState(() => _busy.remove(car.id));
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: const CarZenNavBar(
-        current: NavSection.favorites,
-        title: 'Favorites',
-        fallbackRoute: AppRoutes.browse,
-      ),
-      bottomNavigationBar: const CarZenBottomBar(current: NavSection.favorites),
-      body: SafeArea(
-        bottom: false,
-        child: FutureBuilder<List<Favorite>>(
-          future: _future,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState != ConnectionState.done) {
-              return SingleChildScrollView(
-                child: PageContainer(child: const SkeletonGrid(count: 4, tileHeight: 250, minTileWidth: 300)),
-              );
-            }
-            if (snapshot.hasError) {
-              return ApiErrorView(error: snapshot.error!, onRetry: _refresh, fallback: 'Could not load favorites.');
-            }
-            final favorites = snapshot.data!;
-            if (favorites.isEmpty) {
-              return EmptyStateView(
-                icon: Icons.favorite_border_rounded,
-                title: 'No favorites yet',
-                message: 'Tap the heart on any car to save it here for later.',
-                action: FilledButton(
-                  onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.browse, (r) => false),
-                  child: const Text('Browse cars'),
+    return AppScaffold(
+      section: NavSection.favorites,
+      title: 'Saved cars',
+      fallbackRoute: AppRoutes.account,
+      body: FutureBuilder<List<Favorite>>(
+        future: _future,
+        builder: (context, snap) {
+          final favorites = snap.data?.where((f) => !_removed.contains(f.carId)).toList();
+          return PageScroll(
+            maxWidth: 1120,
+            verticalPadding: Breakpoints.isCompact(context) ? 18 : 32,
+            onRefresh: _refresh,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                PageHeader(
+                  title: 'Saved cars',
+                  subtitle: favorites == null
+                      ? 'Cars you saved to compare and come back to.'
+                      : favorites.isEmpty
+                          ? 'Cars you saved to compare and come back to.'
+                          : '${favorites.length} saved car${favorites.length == 1 ? '' : 's'}. We let you know when the price or status changes.',
                 ),
-              );
-            }
-            return RefreshIndicator(
-              onRefresh: () async {
-                _refresh();
-                await _future;
-              },
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                child: PageContainer(
-                  maxWidth: 1000,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                const SizedBox(height: 22),
+                if (snap.connectionState != ConnectionState.done)
+                  const ListingCollectionSkeleton(count: 3, maxColumns: 3)
+                else if (snap.hasError)
+                  ApiErrorView(error: snap.error!, onRetry: _refresh, fallback: 'Saved cars could not be loaded.', compact: true)
+                else if (favorites!.isEmpty)
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(AppRadii.lg),
+                      border: Border.all(color: AppColors.divider),
+                    ),
+                    child: EmptyStateView(
+                      compact: true,
+                      icon: Icons.favorite_border,
+                      title: 'No saved cars yet',
+                      message: 'Tap the heart on any car to keep it here.',
+                      action: FilledButton(onPressed: () => AppNav.goFrom(context, AppRoutes.browse), child: const Text('Browse cars')),
+                    ),
+                  )
+                else
+                  ResponsiveGrid(
+                    minTileWidth: 280,
+                    maxColumns: 3,
                     children: [
-                      PageHeader(
-                        title: 'Favorites',
-                        subtitle: '${favorites.length} saved car${favorites.length == 1 ? '' : 's'}',
-                        icon: Icons.favorite_rounded,
-                      ),
-                      const SizedBox(height: AppSpacing.xl),
-                      LayoutBuilder(
-                        builder: (context, constraints) {
-                          const spacing = 14.0;
-                          final columns = constraints.maxWidth >= 700 ? 2 : 1;
-                          final width = (constraints.maxWidth - spacing * (columns - 1)) / columns;
-                          return Wrap(
-                            spacing: spacing,
-                            runSpacing: spacing,
-                            children: [for (final f in favorites) SizedBox(width: width, child: _tile(context, f.car))],
-                          );
-                        },
-                      ),
+                      for (final f in favorites)
+                        _SavedCarTile(
+                          car: f.car,
+                          busy: _busy.contains(f.carId),
+                          onOpen: () => _open(f.car),
+                          onRemove: () => _remove(f.car),
+                        ),
                     ],
                   ),
-                ),
-              ),
-            );
-          },
-        ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
+}
 
-  Widget _tile(BuildContext context, ListingCar car) {
-    return SurfaceCard(
-      padding: const EdgeInsets.all(12),
-      onTap: () => _openDetails(car.id),
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(AppRadii.md),
-            child: SizedBox(
-              width: 104,
-              height: 80,
-              child: NetworkPhoto(url: car.media.cover?.absoluteUrl(ApiConfig.baseUrl), cacheWidth: 400),
-            ),
+class _SavedCarTile extends StatelessWidget {
+  final ListingCar car;
+  final bool busy;
+  final VoidCallback onOpen;
+  final VoidCallback onRemove;
+
+  const _SavedCarTile({required this.car, required this.busy, required this.onOpen, required this.onRemove});
+
+  @override
+  Widget build(BuildContext context) {
+    final title = '${car.manufacturingYear} ${car.brandName} ${car.modelName}';
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(AppRadii.lg),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: busy ? null : onOpen,
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadii.lg),
+            border: Border.all(color: AppColors.divider),
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('${car.brandName} ${car.modelName}', maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 2),
-                Text('${car.manufacturingYear} · ${car.city}, ${car.state}', maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.bodySmall),
-                if (car.expectedMarketPrice != null) ...[
-                  const SizedBox(height: 6),
-                  Text(formatInr(car.expectedMarketPrice!), style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.primary, fontSize: 16)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Stack(
+                children: [
+                  AspectRatio(
+                    aspectRatio: 16 / 10,
+                    child: NetworkPhoto(url: car.media.cover?.absoluteUrl(ApiConfig.baseUrl), cacheWidth: 520, semanticLabel: title),
+                  ),
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Material(
+                      color: Colors.white,
+                      shape: const CircleBorder(),
+                      elevation: 1,
+                      child: IconButton(
+                        tooltip: 'Remove from saved cars',
+                        onPressed: busy ? null : onRemove,
+                        icon: const Icon(Icons.favorite, color: AppColors.danger, size: 21),
+                      ),
+                    ),
+                  ),
                 ],
-              ],
-            ),
-          ),
-          _busy.contains(car.id)
-              ? const Padding(padding: EdgeInsets.all(12), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))
-              : IconButton(
-                  tooltip: 'Remove from favorites',
-                  icon: const Icon(Icons.favorite_rounded, color: AppColors.favorite),
-                  onPressed: () => _remove(car.id),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15.5)),
+                    const SizedBox(height: 2),
+                    Text(
+                      <String>[car.variantName, car.fuelType.label, formatKm(car.mileageKm)].where((s) => s.isNotEmpty).join('  |  '),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        if (car.expectedMarketPrice != null) ...[
+                          Text(formatLakh(car.expectedMarketPrice!), style: AppText.price(17)),
+                          const SizedBox(width: 6),
+                          const Text('expected', style: TextStyle(color: AppColors.textTertiary, fontSize: 12.5)),
+                        ],
+                        const Spacer(),
+                        const Icon(Icons.place_outlined, size: 15, color: AppColors.textTertiary),
+                        const SizedBox(width: 3),
+                        Flexible(
+                          child: Text(car.city, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                        ),
+                      ],
+                    ),
+                    if (busy) const Padding(padding: EdgeInsets.only(top: 10), child: LinearProgressIndicator(minHeight: 2)),
+                  ],
                 ),
-        ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

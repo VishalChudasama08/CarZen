@@ -33,7 +33,7 @@ class _SheetFrame extends StatelessWidget {
               children: [
                 Text(title, style: Theme.of(context).textTheme.headlineSmall),
                 const SizedBox(height: 4),
-                Text(subtitle, style: Theme.of(context).textTheme.bodyMedium),
+                Text(subtitle, style: const TextStyle(color: AppColors.textSecondary, fontSize: 14, height: 1.45)),
                 const SizedBox(height: 18),
                 child,
               ],
@@ -258,6 +258,7 @@ class _AddServiceCarSheetState extends State<AddServiceCarSheet> {
             const Padding(padding: EdgeInsets.symmetric(vertical: 14), child: LinearProgressIndicator())
           else
             DropdownButtonFormField<T>(
+              style: const TextStyle(fontSize: 15, color: AppColors.textPrimary, fontFamily: AppText.body),
               value: value,
               isExpanded: true,
               items: [for (final e in items) DropdownMenuItem<T>(value: e, child: Text(text(e), overflow: TextOverflow.ellipsis))],
@@ -365,6 +366,7 @@ class _AddServiceCarSheetState extends State<AddServiceCarSheet> {
                         const Text('Fuel *', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
                         const SizedBox(height: 6),
                         DropdownButtonFormField<FuelType>(
+                          style: const TextStyle(fontSize: 15, color: AppColors.textPrimary, fontFamily: AppText.body),
                           value: _fuel,
                           isExpanded: true,
                           items: [for (final f in FuelType.values) DropdownMenuItem(value: f, child: Text(f.label))],
@@ -384,6 +386,7 @@ class _AddServiceCarSheetState extends State<AddServiceCarSheet> {
                         const Text('Transmission *', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
                         const SizedBox(height: 6),
                         DropdownButtonFormField<TransmissionType>(
+                          style: const TextStyle(fontSize: 15, color: AppColors.textPrimary, fontFamily: AppText.body),
                           value: _transmission,
                           isExpanded: true,
                           items: [

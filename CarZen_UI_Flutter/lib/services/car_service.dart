@@ -83,6 +83,12 @@ class CarService {
     return CarRecord.fromJson(json as Map<String, dynamic>);
   }
 
+  /// `POST /v1/cars` with a full `CarCreate` body.
+  Future<CarRecord> createCarFromFields(Map<String, dynamic> body) async {
+    final json = await _client.post('/cars', body: body);
+    return CarRecord.fromJson(json as Map<String, dynamic>);
+  }
+
   Future<CarRecord> updateCar(int carId, Map<String, dynamic> partialFields) async {
     final json = await _client.patch('/cars/$carId', body: partialFields);
     return CarRecord.fromJson(json as Map<String, dynamic>);
@@ -131,7 +137,6 @@ class CarService {
   }
 
   Future<CarMedia> setPrimaryMedia(int carId, int mediaId) async {
-    // TODO(Ayush): check media_service.update_media / set_primary — DB shows is_primary=false even after this call
     final json = await _client.patch('/cars/$carId/media/$mediaId/primary');
     return CarMedia.fromJson(json as Map<String, dynamic>);
   }
@@ -172,8 +177,14 @@ class CarService {
 
   // ---- Admin moderation ----
 
-  Future<PaginatedList<CarRecord>> listAdminCars({int page = 1, int limit = 20, CarApprovalStatus? status}) async {
-    final json = await _client.get('/admin/cars', query: {'page': page, 'limit': limit, 'status': status?.apiValue});
+  Future<PaginatedList<CarRecord>> listAdminCars({int page = 1, int limit = 20, CarApprovalStatus? status, String? search, int? ownerId}) async {
+    final json = await _client.get('/admin/cars', query: {
+      'page': page,
+      'limit': limit,
+      'status': status?.apiValue,
+      'owner_id': ownerId,
+      if (search != null && search.isNotEmpty) 'search': search,
+    });
     return PaginatedList.fromJson(json as Map<String, dynamic>, CarRecord.fromJson);
   }
 

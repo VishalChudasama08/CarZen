@@ -26,10 +26,30 @@ class Validators {
     return null;
   }
 
+  /// Mirrors the backend's password policy (auth_service.is_password_valid)
+  /// so people learn about a weak password before submitting.
   static String? password(String? value) {
     final v = value ?? '';
     if (v.isEmpty) return 'Password is required';
-    if (v.length < 8) return 'Password must be at least 8 characters';
+    final missing = passwordRules.where((r) => !r.test(v)).map((r) => r.label.toLowerCase()).toList();
+    if (missing.isEmpty) return null;
+    return 'Password needs ${missing.join(', ')}';
+  }
+
+  static final List<PasswordRule> passwordRules = [
+    PasswordRule('At least 8 characters', (v) => v.length >= 8),
+    PasswordRule('An uppercase letter', (v) => RegExp(r'[A-Z]').hasMatch(v)),
+    PasswordRule('A lowercase letter', (v) => RegExp(r'[a-z]').hasMatch(v)),
+    PasswordRule('A number', (v) => RegExp(r'\d').hasMatch(v)),
+    PasswordRule('A special character', (v) => RegExp(r'[\W_]').hasMatch(v)),
+  ];
+
+  static String? positiveNumber(String? value, {String field = 'This value', bool required = true}) {
+    final trimmed = (value ?? '').replaceAll(',', '').trim();
+    if (trimmed.isEmpty) return required ? '$field is required' : null;
+    final n = num.tryParse(trimmed);
+    if (n == null) return 'Enter a number';
+    if (n < 0) return '$field cannot be negative';
     return null;
   }
 
@@ -47,4 +67,10 @@ class Validators {
     if (!RegExp(r'^[0-9]{7,15}$').hasMatch(trimmed)) return 'Enter a valid phone number';
     return null;
   }
+}
+
+class PasswordRule {
+  final String label;
+  final bool Function(String value) test;
+  const PasswordRule(this.label, this.test);
 }

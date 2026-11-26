@@ -2,7 +2,7 @@
 class PaymentLimits {
   PaymentLimits._();
 
-  /// Ayush's Razorpay account limit per order is ₹50,000 (5,000,000 paise).
+  /// The payment account's limit per order is ₹50,000 (5,000,000 paise).
   /// Razorpay orders exceeding this threshold fail at creation or checkout.
   static const num maxOnlineInr = 50000;
 

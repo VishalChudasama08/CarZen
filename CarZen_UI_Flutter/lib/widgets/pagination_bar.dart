@@ -34,28 +34,47 @@ class PaginationBar extends StatelessWidget {
   }
 
   Widget _compact(BuildContext context, PaginationMeta m) {
+    final isNarrow = Breakpoints.isNarrow(context);
     return Row(
       children: [
         Expanded(
-          child: OutlinedButton.icon(
+          child: OutlinedButton(
             onPressed: busy || m.page <= 1 ? null : () => onPageChanged(m.page - 1),
-            icon: const Icon(Icons.chevron_left_rounded),
-            label: const Text('Prev'),
+            style: OutlinedButton.styleFrom(
+              padding: EdgeInsets.symmetric(horizontal: isNarrow ? 6 : 12),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.chevron_left_rounded, size: 18),
+                if (!isNarrow) ...[const SizedBox(width: 4), const Text('Prev')],
+              ],
+            ),
           ),
         ),
-        const SizedBox(width: 8),
+        SizedBox(width: isNarrow ? 4 : 8),
         TextButton(
           onPressed: busy ? null : () => _pickPage(context, m),
-          child: Text('Page ${m.page} of ${m.totalPages}'),
+          style: TextButton.styleFrom(
+            padding: EdgeInsets.symmetric(horizontal: isNarrow ? 6 : 10),
+          ),
+          child: Text(isNarrow ? '${m.page} / ${m.totalPages}' : 'Page ${m.page} of ${m.totalPages}'),
         ),
-        const SizedBox(width: 8),
+        SizedBox(width: isNarrow ? 4 : 8),
         Expanded(
           child: OutlinedButton(
             onPressed: busy || m.page >= m.totalPages ? null : () => onPageChanged(m.page + 1),
-            child: const Row(
+            style: OutlinedButton.styleFrom(
+              padding: EdgeInsets.symmetric(horizontal: isNarrow ? 6 : 12),
+            ),
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
-              children: [Text('Next'), Icon(Icons.chevron_right_rounded)],
+              children: [
+                if (!isNarrow) ...[const Text('Next'), const SizedBox(width: 4)],
+                const Icon(Icons.chevron_right_rounded, size: 18),
+              ],
             ),
           ),
         ),

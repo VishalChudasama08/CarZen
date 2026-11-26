@@ -1,537 +1,788 @@
-import 'package:carzen_flutter/routes/app_routes.dart';
-import 'package:carzen_flutter/widgets/carzen_nav_bar.dart';
-import 'package:carzen_flutter/widgets/content_width.dart';
-import 'package:flutter/material.dart';
 import 'package:carzen_flutter/models/car_models.dart';
 import 'package:carzen_flutter/models/catalog_models.dart';
 import 'package:carzen_flutter/models/enums.dart';
+import 'package:carzen_flutter/routes/app_routes.dart';
 import 'package:carzen_flutter/services/api_exception.dart';
 import 'package:carzen_flutter/services/car_service.dart';
 import 'package:carzen_flutter/services/catalog_service.dart';
 import 'package:carzen_flutter/theme/app_theme.dart';
+import 'package:carzen_flutter/utils/breakpoints.dart';
+import 'package:carzen_flutter/utils/formatters.dart';
+import 'package:carzen_flutter/utils/india.dart';
 import 'package:carzen_flutter/utils/validators.dart';
-import 'package:carzen_flutter/widgets/auth_error_banner.dart';
+import 'package:carzen_flutter/widgets/app_shell.dart';
 import 'package:carzen_flutter/widgets/auth_text_field.dart';
-import 'package:carzen_flutter/widgets/primary_button.dart';
+import 'package:carzen_flutter/widgets/form_widgets.dart';
+import 'package:carzen_flutter/widgets/page_container.dart';
+import 'package:carzen_flutter/widgets/state_views.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
-/// Create (`POST /v1/cars`) or edit (`PATCH /v1/cars/{id}`) a car.
-///
-/// Only the fields the backend's `CarCreate`/`CarUpdate` schema requires,
-/// plus a handful of the most useful optional ones, are collected here —
-/// see `CarService._carPayload` for the exact set sent to the API.
+/// Add (`POST /v1/cars`) or edit (`PATCH /v1/cars/{id}`) a car in three
+/// steps: the car itself, its history, and where it is. Every `CarCreate`
+/// field is available; the ones resale requires are asked for up front so
+/// the car can pass review.
 class AddEditCarScreen extends StatefulWidget {
-  /// Pass an existing [CarRecordDetail] to edit it; leave null to create.
   final CarRecordDetail? existingCar;
 
-  const AddEditCarScreen({super.key, this.existingCar});
+  /// Load the car to edit by id (deep links).
+  final int? carId;
+
+  const AddEditCarScreen({super.key, this.existingCar, this.carId});
 
   @override
   State<AddEditCarScreen> createState() => _AddEditCarScreenState();
 }
 
 class _AddEditCarScreenState extends State<AddEditCarScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _catalogService = CatalogService();
-  final _carService = CarService();
+  static const _steps = ['Your car', 'History', 'Location and price'];
 
-  final _yearController = TextEditingController();
-  final _mileageController = TextEditingController();
-  final _cityController = TextEditingController();
-  final _stateController = TextEditingController();
-  final _colorController = TextEditingController();
-  final _registrationController = TextEditingController();
-  final _priceController = TextEditingController();
-  final _descriptionController = TextEditingController();
+  final _formKeys = [GlobalKey<FormState>(), GlobalKey<FormState>(), GlobalKey<FormState>()];
+  final _catalog = CatalogService();
+  final _cars = CarService();
+  final _scroll = ScrollController();
+
+  final _year = TextEditingController();
+  final _km = TextEditingController();
+  final _regNumber = TextEditingController();
+  final _regYear = TextEditingController();
+  final _vin = TextEditingController();
+  final _insurer = TextEditingController();
+  final _city = TextEditingController();
+  final _pin = TextEditingController();
+  final _color = TextEditingController();
+  final _engine = TextEditingController();
+  final _power = TextEditingController();
+  final _seats = TextEditingController();
+  final _price = TextEditingController();
+  final _description = TextEditingController();
+
+  CarRecordDetail? _existing;
+  bool _loadingExisting = false;
+  Object? _loadError;
 
   List<CatalogBrand> _brands = [];
   List<CatalogCarModel> _models = [];
   List<CatalogVariant> _variants = [];
-
-  CatalogBrand? _selectedBrand;
-  CatalogCarModel? _selectedModel;
-  CatalogVariant? _selectedVariant;
-  FuelType _fuelType = FuelType.petrol;
-  TransmissionType _transmission = TransmissionType.manual;
-  CarCondition _condition = CarCondition.good;
-
+  int? _brandId;
+  int? _modelId;
+  int? _variantId;
   bool _loadingBrands = true;
   bool _loadingModels = false;
   bool _loadingVariants = false;
-  bool _isSaving = false;
-  String? _errorMessage;
 
-  bool get _isEditing => widget.existingCar != null;
+  FuelType? _fuel;
+  TransmissionType? _gearbox;
+  CarCondition? _condition;
+  OwnershipType? _ownership;
+  String? _insuranceType;
+  DateTime? _insuranceExpiry;
+  String? _rcStatus;
+  String? _state;
+
+  int _step = 0;
+  bool _saving = false;
+  String? _error;
+  bool _triedStep0 = false;
+
+  bool get _editing => _existing != null;
 
   @override
   void initState() {
     super.initState();
-    _prefillFromExisting();
+    _existing = widget.existingCar;
+    if (_existing == null && widget.carId != null) {
+      _loadExisting(widget.carId!);
+    } else {
+      _prefill();
+    }
     _loadBrands();
-  }
-
-  void _prefillFromExisting() {
-    final car = widget.existingCar;
-    if (car == null) return;
-    _yearController.text = car.manufacturingYear.toString();
-    _mileageController.text = car.mileageKm.toString();
-    _cityController.text = car.city;
-    _stateController.text = car.state;
-    _colorController.text = car.color ?? '';
-    _registrationController.text = car.registrationNumber ?? '';
-    _priceController.text = car.expectedMarketPrice?.toString() ?? '';
-    _descriptionController.text = car.description ?? '';
-    _fuelType = car.fuelType;
-    _transmission = car.transmission;
-    _condition = car.condition;
-  }
-
-  Future<void> _loadBrands() async {
-    setState(() => _loadingBrands = true);
-    try {
-      final result = await _catalogService.listBrands(limit: 100);
-      if (!mounted) return;
-      setState(() {
-        _brands = result.data;
-        _loadingBrands = false;
-      });
-    } on ApiException catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _loadingBrands = false;
-        _errorMessage = 'Could not load car brands: ${e.message}';
-      });
-    }
-  }
-
-  Future<void> _onBrandSelected(CatalogBrand? brand) async {
-    setState(() {
-      _selectedBrand = brand;
-      _selectedModel = null;
-      _selectedVariant = null;
-      _models = [];
-      _variants = [];
-      _loadingModels = brand != null;
-    });
-    if (brand == null) return;
-    try {
-      final result = await _catalogService.listModelsForBrand(brand.id, limit: 100);
-      if (!mounted) return;
-      setState(() {
-        _models = result.data;
-        _loadingModels = false;
-      });
-    } on ApiException catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _loadingModels = false;
-        _errorMessage = 'Could not load models: ${e.message}';
-      });
-    }
-  }
-
-  Future<void> _onModelSelected(CatalogCarModel? model) async {
-    setState(() {
-      _selectedModel = model;
-      _selectedVariant = null;
-      _variants = [];
-      _loadingVariants = model != null;
-    });
-    if (model == null) return;
-    try {
-      final result = await _catalogService.listVariantsForModel(model.id, limit: 100);
-      if (!mounted) return;
-      setState(() {
-        _variants = result.data;
-        _loadingVariants = false;
-      });
-    } on ApiException catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _loadingVariants = false;
-        _errorMessage = 'Could not load variants: ${e.message}';
-      });
-    }
-  }
-
-  Future<void> _handleSave() async {
-    if (!_formKey.currentState!.validate()) return;
-    if (!_isEditing && _selectedVariant == null) {
-      setState(() => _errorMessage = 'Please select brand, model and variant.');
-      return;
-    }
-
-    setState(() {
-      _isSaving = true;
-      _errorMessage = null;
-    });
-
-    try {
-      if (_isEditing) {
-        await _carService.updateCar(widget.existingCar!.id, {
-          'manufacturing_year': int.parse(_yearController.text.trim()),
-          'fuel_type': _fuelType.apiValue,
-          'transmission': _transmission.apiValue,
-          'mileage_km': num.parse(_mileageController.text.trim()),
-          'condition': _condition.apiValue,
-          'city': _cityController.text.trim(),
-          'state': _stateController.text.trim(),
-          if (_colorController.text.trim().isNotEmpty) 'color': _colorController.text.trim(),
-          if (_registrationController.text.trim().isNotEmpty)
-            'registration_number': _registrationController.text.trim(),
-          if (_priceController.text.trim().isNotEmpty)
-            'expected_market_price': num.parse(_priceController.text.trim()),
-          if (_descriptionController.text.trim().isNotEmpty) 'description': _descriptionController.text.trim(),
-        });
-      } else {
-        await _carService.createCar(
-          variantId: _selectedVariant!.id,
-          manufacturingYear: int.parse(_yearController.text.trim()),
-          fuelType: _fuelType,
-          transmission: _transmission,
-          mileageKm: num.parse(_mileageController.text.trim()),
-          condition: _condition,
-          city: _cityController.text.trim(),
-          state: _stateController.text.trim(),
-          color: _colorController.text.trim(),
-          registrationNumber: _registrationController.text.trim(),
-          expectedMarketPrice:
-              _priceController.text.trim().isEmpty ? null : num.parse(_priceController.text.trim()),
-          description: _descriptionController.text.trim(),
-        );
-      }
-      if (!mounted) return;
-      Navigator.of(context).pop(true);
-    } on ApiException catch (e) {
-      setState(() => _errorMessage = e.message);
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
-    }
   }
 
   @override
   void dispose() {
-    _yearController.dispose();
-    _mileageController.dispose();
-    _cityController.dispose();
-    _stateController.dispose();
-    _colorController.dispose();
-    _registrationController.dispose();
-    _priceController.dispose();
-    _descriptionController.dispose();
+    for (final c in [_year, _km, _regNumber, _regYear, _vin, _insurer, _city, _pin, _color, _engine, _power, _seats, _price, _description]) {
+      c.dispose();
+    }
+    _scroll.dispose();
     super.dispose();
   }
 
+  Future<void> _loadExisting(int id) async {
+    setState(() {
+      _loadingExisting = true;
+      _loadError = null;
+    });
+    try {
+      final car = await _cars.getCar(id);
+      if (!mounted) return;
+      setState(() {
+        _existing = car;
+        _loadingExisting = false;
+      });
+      _prefill();
+      if (car.brandId != 0) await _selectBrand(car.brandId, keepSelection: true);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loadError = e;
+          _loadingExisting = false;
+        });
+      }
+    }
+  }
+
+  String _num(num? v) => v == null ? '' : (v == v.roundToDouble() ? v.round().toString() : v.toString());
+
+  void _prefill() {
+    final car = _existing;
+    if (car == null) return;
+    _brandId = car.brandId == 0 ? null : car.brandId;
+    _modelId = car.modelId == 0 ? null : car.modelId;
+    _variantId = car.variantId;
+    _year.text = '${car.manufacturingYear}';
+    _km.text = _num(car.mileageKm);
+    _regNumber.text = car.registrationNumber ?? '';
+    _regYear.text = car.registrationYear?.toString() ?? '';
+    _vin.text = car.vinNumber ?? '';
+    _insurer.text = car.insuranceCompany ?? '';
+    _insuranceType = car.insuranceType;
+    _insuranceExpiry = car.insuranceExpiry == null ? null : DateTime.tryParse(car.insuranceExpiry!);
+    _rcStatus = car.rcStatus;
+    _city.text = car.city;
+    _state = indianStates.contains(car.state) ? car.state : null;
+    _pin.text = car.postalCode ?? '';
+    _color.text = car.color ?? '';
+    _engine.text = _num(car.engineCc);
+    _power.text = _num(car.horsepower);
+    _seats.text = car.seatingCapacity?.toString() ?? '';
+    _price.text = _num(car.expectedMarketPrice);
+    _description.text = car.description ?? '';
+    _fuel = car.fuelType;
+    _gearbox = car.transmission;
+    _condition = car.condition;
+    _ownership = car.ownershipType;
+  }
+
+  Future<void> _loadBrands() async {
+    try {
+      final page = await _catalog.listBrands(limit: 100, isActive: true);
+      if (!mounted) return;
+      setState(() {
+        _brands = page.data;
+        _loadingBrands = false;
+      });
+      if (_brandId != null && _models.isEmpty) await _selectBrand(_brandId!, keepSelection: true);
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() {
+          _loadingBrands = false;
+          _error = 'Car brands could not be loaded. ${e.message}';
+        });
+      }
+    }
+  }
+
+  Future<void> _selectBrand(int? id, {bool keepSelection = false}) async {
+    setState(() {
+      _brandId = id;
+      if (!keepSelection) {
+        _modelId = null;
+        _variantId = null;
+      }
+      _models = [];
+      _variants = [];
+      _loadingModels = id != null;
+    });
+    if (id == null) return;
+    try {
+      final page = await _catalog.listModelsForBrand(id);
+      if (!mounted || _brandId != id) return;
+      setState(() {
+        _models = page.data.where((m) => m.isActive || m.id == _modelId).toList();
+        _loadingModels = false;
+      });
+      if (keepSelection && _modelId != null) await _selectModel(_modelId, keepSelection: true);
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() {
+          _loadingModels = false;
+          _error = 'Models could not be loaded. ${e.message}';
+        });
+      }
+    }
+  }
+
+  Future<void> _selectModel(int? id, {bool keepSelection = false}) async {
+    setState(() {
+      _modelId = id;
+      if (!keepSelection) _variantId = null;
+      _variants = [];
+      _loadingVariants = id != null;
+    });
+    if (id == null) return;
+    try {
+      final page = await _catalog.listVariantsForModel(id);
+      if (!mounted || _modelId != id) return;
+      setState(() {
+        _variants = page.data;
+        _loadingVariants = false;
+      });
+      final model = _models.where((m) => m.id == id).firstOrNull;
+      if (model?.seatingCapacity != null && _seats.text.isEmpty) _seats.text = '${model!.seatingCapacity}';
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() {
+          _loadingVariants = false;
+          _error = 'Variants could not be loaded. ${e.message}';
+        });
+      }
+    }
+  }
+
+  /// Choosing a variant fills in what the catalogue already knows.
+  void _selectVariant(int? id) {
+    final v = _variants.where((v) => v.id == id).firstOrNull;
+    setState(() {
+      _variantId = id;
+      if (v != null) {
+        _fuel = v.fuelType;
+        _gearbox = v.transmission;
+        if (v.engineCc != null) _engine.text = _num(v.engineCc);
+        if (v.horsepower != null) _power.text = _num(v.horsepower);
+        if (v.seatingCapacity != null) _seats.text = '${v.seatingCapacity}';
+      }
+    });
+  }
+
+  bool _validateStep(int step) {
+    if (step == 0) {
+      setState(() => _triedStep0 = true);
+      final formOk = _formKeys[0].currentState?.validate() ?? false;
+      return formOk && _variantId != null && _fuel != null && _gearbox != null && _condition != null;
+    }
+    return _formKeys[step].currentState?.validate() ?? false;
+  }
+
+  void _goTo(int step) {
+    setState(() {
+      _step = step;
+      _error = null;
+    });
+    if (_scroll.hasClients) _scroll.jumpTo(0);
+  }
+
+  void _next() {
+    if (!_validateStep(_step)) return;
+    if (_step < _steps.length - 1) {
+      _goTo(_step + 1);
+    } else {
+      _save();
+    }
+  }
+
+  int? _int(TextEditingController c) => int.tryParse(c.text.trim());
+  num? _number(TextEditingController c) => num.tryParse(c.text.replaceAll(',', '').trim());
+  String? _text(TextEditingController c) => c.text.trim().isEmpty ? null : c.text.trim();
+
+  Map<String, dynamic> _payload() {
+    final owners = switch (_ownership) {
+      OwnershipType.firstOwner => 1,
+      OwnershipType.secondOwner => 2,
+      OwnershipType.thirdOwner => 3,
+      OwnershipType.fourthOrMore => 4,
+      null => null,
+    };
+    return {
+      'variant_id': _variantId,
+      'manufacturing_year': _int(_year),
+      'registration_year': _int(_regYear),
+      'registration_number': _text(_regNumber)?.toUpperCase().replaceAll(' ', ''),
+      'vin_number': _text(_vin)?.toUpperCase(),
+      'fuel_type': _fuel!.apiValue,
+      'transmission': _gearbox!.apiValue,
+      'mileage_km': _number(_km) ?? 0,
+      'condition': _condition!.apiValue,
+      'ownership_type': _ownership?.apiValue,
+      'owner_count': owners,
+      'insurance_company': _text(_insurer),
+      'insurance_type': _insuranceType,
+      'insurance_expiry': _insuranceExpiry == null ? null : toApiDate(_insuranceExpiry!),
+      'rc_status': _rcStatus,
+      'city': _city.text.trim(),
+      'state': _state,
+      'country': 'India',
+      'postal_code': _text(_pin),
+      'color': _text(_color),
+      'engine_cc': _number(_engine),
+      'horsepower': _number(_power),
+      'seating_capacity': _int(_seats),
+      'expected_market_price': _number(_price),
+      'description': _text(_description),
+    };
+  }
+
+  Future<void> _save() async {
+    if (_saving) return;
+    for (var i = 0; i < _steps.length; i++) {
+      if (!_validateStep(i)) {
+        _goTo(i);
+        return;
+      }
+    }
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      final body = _payload();
+      if (_editing) {
+        await _cars.updateCar(_existing!.id, body);
+        if (!mounted) return;
+        showAppSnack(context, 'Changes saved');
+        Navigator.of(context).pop(true);
+      } else {
+        body.removeWhere((k, v) => v == null);
+        final car = await _cars.createCarFromFields(body);
+        if (!mounted) return;
+        showAppSnack(context, 'Car saved. Add photos so our team can review it.');
+        Navigator.of(context).pushReplacementNamed(AppRoutes.myCar(car.id));
+      }
+    } on ApiException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: CarZenNavBar(
-        current: NavSection.sell,
-        title: _isEditing ? 'Edit Car' : 'Add Car',
-        fallbackRoute: AppRoutes.sell,
-      ),
-      body: ContentWidth(
-        maxWidth: 720,
-        child: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _StepIntro(editing: _isEditing),
-                if (_errorMessage != null) AuthErrorBanner(message: _errorMessage!),
-                if (!_isEditing) ...[
-                  Text('Brand, model & variant', style: Theme.of(context).textTheme.titleLarge),
-                  const SizedBox(height: 4),
-                  Text('Pick your car from the catalogue so buyers see the right specifications.', style: Theme.of(context).textTheme.bodySmall),
-                  const SizedBox(height: 12),
-                  _loadingBrands
-                      ? const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          child: LinearProgressIndicator(color: AppColors.secondary),
-                        )
-                      : _CatalogDropdown<CatalogBrand>(
-                          label: 'Brand *',
-                          value: _selectedBrand,
-                          items: _brands,
-                          itemLabel: (b) => b.name,
-                          onChanged: _onBrandSelected,
-                        ),
-                  const SizedBox(height: 12),
-                  _loadingModels
-                      ? const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          child: LinearProgressIndicator(color: AppColors.secondary),
-                        )
-                      : _CatalogDropdown<CatalogCarModel>(
-                          label: 'Model',
-                          value: _selectedModel,
-                          items: _models,
-                          itemLabel: (m) => m.name,
-                          onChanged: _selectedBrand == null ? null : _onModelSelected,
-                        ),
-                  const SizedBox(height: 12),
-                  _loadingVariants
-                      ? const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          child: LinearProgressIndicator(color: AppColors.secondary),
-                        )
-                      : _CatalogDropdown<CatalogVariant>(
-                          label: 'Variant',
-                          value: _selectedVariant,
-                          items: _variants,
-                          itemLabel: (v) => v.variantName,
-                          onChanged: _selectedModel == null
-                              ? null
-                              : (v) => setState(() {
-                                    _selectedVariant = v;
-                                    if (v != null) {
-                                      _fuelType = v.fuelType;
-                                      _transmission = v.transmission;
-                                    }
-                                  }),
-                        ),
-                  const SizedBox(height: 20),
+    return AppScaffold(
+      section: NavSection.sell,
+      title: _editing ? 'Edit car details' : 'Add your car',
+      fallbackRoute: AppRoutes.sell,
+      showBackButton: true,
+      body: _loadingExisting
+          ? const LoadingView(label: 'Loading your car...')
+          : _loadError != null
+              ? ApiErrorView(error: _loadError!, onRetry: () => _loadExisting(widget.carId!))
+              : _form(context),
+    );
+  }
+
+  Widget _form(BuildContext context) {
+    final compact = Breakpoints.isCompact(context);
+    return Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            controller: _scroll,
+            child: PageContainer(
+              maxWidth: 760,
+              verticalPadding: compact ? 18 : 32,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  PageHeader(
+                    title: _editing ? 'Edit car details' : 'Add your car',
+                    subtitle: _editing
+                        ? 'Changing key details sends the car back for a quick review.'
+                        : 'Three short steps. Our team checks the details before your car can be listed.',
+                  ),
+                  const SizedBox(height: 22),
+                  StepIndicator(steps: _steps, current: _step, onTap: _goTo),
+                  const SizedBox(height: 22),
+                  if (_error != null) InlineError(_error!),
+                  IndexedStack(
+                    index: _step,
+                    sizing: StackFit.loose,
+                    children: [
+                      Visibility(visible: _step == 0, maintainState: true, child: _stepCar()),
+                      Visibility(visible: _step == 1, maintainState: true, child: _stepHistory()),
+                      Visibility(visible: _step == 2, maintainState: true, child: _stepPlace()),
+                    ],
+                  ),
                 ],
-                Text('Car details', style: Theme.of(context).textTheme.titleLarge),
-                const SizedBox(height: 4),
-                Text('Be accurate — the CarZen team checks these details before your car is approved.', style: Theme.of(context).textTheme.bodySmall),
-                const SizedBox(height: 12),
-                AuthTextField(
-                  controller: _yearController,
-                  label: 'Manufacturing Year *',
-                  hint: 'e.g. 2021',
-                  icon: Icons.calendar_today_outlined,
-                  keyboardType: TextInputType.number,
-                  validator: (v) {
-                    final required = Validators.required(v, message: 'Manufacturing year is required');
-                    if (required != null) return required;
-                    final year = int.tryParse(v!.trim());
-                    if (year == null || year < 1980 || year > DateTime.now().year + 1) return 'Enter a valid year';
-                    return null;
-                  },
-                ),
-                AuthTextField(
-                  controller: _mileageController,
-                  label: 'Mileage (km) *',
-                  hint: 'e.g. 42000',
-                  icon: Icons.speed_outlined,
-                  keyboardType: TextInputType.number,
-                  validator: (v) {
-                    final required = Validators.required(v, message: 'Mileage is required');
-                    if (required != null) return required;
-                    if (num.tryParse(v!.trim()) == null) return 'Enter a valid number';
-                    return null;
-                  },
-                ),
-                _EnumDropdown<FuelType>(
-                  label: 'Fuel Type *',
-                  value: _fuelType,
-                  values: FuelType.values,
-                  labelOf: (f) => f.label,
-                  onChanged: (v) => setState(() => _fuelType = v!),
-                ),
-                const SizedBox(height: 12),
-                _EnumDropdown<TransmissionType>(
-                  label: 'Transmission *',
-                  value: _transmission,
-                  values: TransmissionType.values,
-                  labelOf: (t) => t.label,
-                  onChanged: (v) => setState(() => _transmission = v!),
-                ),
-                const SizedBox(height: 12),
-                _EnumDropdown<CarCondition>(
-                  label: 'Condition *',
-                  value: _condition,
-                  values: const [
-                    CarCondition.excellent,
-                    CarCondition.good,
-                    CarCondition.fair,
-                    CarCondition.poor,
-                    CarCondition.newCar,
-                    CarCondition.old,
-                  ],
-                  labelOf: (c) => c.label,
-                  onChanged: (v) => setState(() => _condition = v!),
-                ),
-                const SizedBox(height: 12),
-                AuthTextField(
-                  controller: _cityController,
-                  label: 'City *',
-                  hint: 'Ahmedabad',
-                  icon: Icons.location_city_outlined,
-                  validator: (v) => Validators.required(v, message: 'City is required'),
-                ),
-                AuthTextField(
-                  controller: _stateController,
-                  label: 'State',
-                  hint: 'Gujarat',
-                  icon: Icons.map_outlined,
-                  validator: (v) => Validators.required(v, message: 'State is required'),
-                ),
-                AuthTextField(
-                  controller: _colorController,
-                  label: 'Color (optional)',
-                  hint: 'White',
-                  icon: Icons.color_lens_outlined,
-                ),
-                AuthTextField(
-                  controller: _registrationController,
-                  label: 'Registration Number (optional)',
-                  hint: 'GJ01AB1234',
-                  icon: Icons.badge_outlined,
-                ),
-                AuthTextField(
-                  controller: _priceController,
-                  label: 'Expected Market Price (optional)',
-                  hint: 'e.g. 650000',
-                  icon: Icons.sell_outlined,
-                  keyboardType: TextInputType.number,
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) return null;
-                    if (num.tryParse(v.trim()) == null) return 'Enter a valid number';
-                    return null;
-                  },
-                ),
-                AuthTextField(
-                  controller: _descriptionController,
-                  label: 'Description (optional)',
-                  hint: 'Anything buyers should know',
-                  icon: Icons.notes_outlined,
-                  textInputAction: TextInputAction.done,
-                ),
-                const SizedBox(height: 10),
-                PrimaryButton(
-                  label: _isEditing ? 'Save Changes' : 'Add Car',
-                  onPressed: _handleSave,
-                  isLoading: _isSaving,
-                ),
-                const SizedBox(height: 24),
-              ],
+              ),
             ),
           ),
         ),
-      ),
-      ),
-    );
-  }
-}
-
-class _CatalogDropdown<T> extends StatelessWidget {
-  final String label;
-  final T? value;
-  final List<T> items;
-  final String Function(T) itemLabel;
-  final ValueChanged<T?>? onChanged;
-
-  const _CatalogDropdown({
-    required this.label,
-    required this.value,
-    required this.items,
-    required this.itemLabel,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-        const SizedBox(height: 6),
-        DropdownButtonFormField<T>(
-          value: value,
-          isExpanded: true,
-          items: items
-              .map((e) => DropdownMenuItem(value: e, child: Text(itemLabel(e), overflow: TextOverflow.ellipsis)))
-              .toList(),
-          onChanged: onChanged,
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: AppColors.surface,
-            contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.divider)),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.divider)),
-          ),
-          hint: Text(items.isEmpty ? 'Select $label first' : 'Select $label'),
+        _BottomBar(
+          step: _step,
+          total: _steps.length,
+          saving: _saving,
+          editing: _editing,
+          onBack: _step == 0 ? null : () => _goTo(_step - 1),
+          onNext: _next,
+          onSaveNow: _editing && _step < _steps.length - 1 ? _save : null,
         ),
       ],
     );
   }
-}
 
-class _EnumDropdown<T> extends StatelessWidget {
-  final String label;
-  final T value;
-  final List<T> values;
-  final String Function(T) labelOf;
-  final ValueChanged<T?> onChanged;
-
-  const _EnumDropdown({
-    required this.label,
-    required this.value,
-    required this.values,
-    required this.labelOf,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-        const SizedBox(height: 6),
-        DropdownButtonFormField<T>(
-          value: value,
-          isExpanded: true,
-          items: values.map((e) => DropdownMenuItem(value: e, child: Text(labelOf(e)))).toList(),
-          onChanged: onChanged,
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: AppColors.surface,
-            contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.divider)),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.divider)),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Short explanation at the top of the car form: where this step sits in the sell flow.
-class _StepIntro extends StatelessWidget {
-  final bool editing;
-  const _StepIntro({required this.editing});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 20),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.cyanTint,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: AppColors.cyan.withValues(alpha: 0.5)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _stepCar() {
+    final year = DateTime.now().year;
+    return Form(
+      key: _formKeys[0],
+      child: FormPanel(
+        title: 'Which car is it?',
+        subtitle: 'Pick it from the catalogue so buyers see the right specifications.',
         children: [
-          const Icon(Icons.info_outline_rounded, color: AppColors.secondary, size: 20),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              editing
-                  ? 'Changing key details such as year, mileage or price sends an approved car back for review.'
-                  : 'Step 1 of 4: add your car. After saving you can add photos and features, then publish a listing once the car is approved.',
-              style: const TextStyle(height: 1.4, fontSize: 13.5),
+          DropdownField<int>(
+            label: 'Brand',
+            required: true,
+            value: _brandId,
+            loading: _loadingBrands,
+            items: [for (final b in _brands) DropdownMenuItem(value: b.id, child: Text(b.name))],
+            onChanged: (v) => _selectBrand(v),
+            validator: (v) => v == null ? 'Choose the brand' : null,
+          ),
+          FieldPair(
+            DropdownField<int>(
+              label: 'Model',
+              required: true,
+              value: _models.any((m) => m.id == _modelId) ? _modelId : null,
+              loading: _loadingModels,
+              hint: _brandId == null ? 'Choose a brand first' : 'Select',
+              items: [for (final m in _models) DropdownMenuItem(value: m.id, child: Text(m.name))],
+              onChanged: _brandId == null ? null : (v) => _selectModel(v),
+              validator: (v) => v == null ? 'Choose the model' : null,
             ),
+            DropdownField<int>(
+              label: 'Variant',
+              required: true,
+              value: _variants.any((v) => v.id == _variantId) ? _variantId : null,
+              loading: _loadingVariants,
+              hint: _modelId == null ? 'Choose a model first' : 'Select',
+              items: [
+                for (final v in _variants)
+                  DropdownMenuItem(value: v.id, child: Text('${v.variantName} (${v.fuelType.label}, ${v.transmission.label})', overflow: TextOverflow.ellipsis)),
+              ],
+              onChanged: _modelId == null ? null : _selectVariant,
+              validator: (v) => v == null ? 'Choose the variant' : null,
+            ),
+          ),
+          AuthTextField(
+            controller: _year,
+            label: 'Year of manufacture',
+            required: true,
+            hint: 'e.g. 2021',
+            keyboardType: TextInputType.number,
+            validator: (v) {
+              final n = int.tryParse((v ?? '').trim());
+              if (n == null) return 'Enter the year';
+              if (n < 1950 || n > year) return 'Use a year between 1950 and $year';
+              return null;
+            },
+          ),
+          ChoiceField<FuelType>(
+            label: 'Fuel',
+            required: true,
+            values: FuelType.values,
+            selected: _fuel,
+            labelOf: (v) => v.label,
+            onSelected: (v) => setState(() => _fuel = v),
+            errorText: _triedStep0 && _fuel == null ? 'Choose the fuel type' : null,
+          ),
+          ChoiceField<TransmissionType>(
+            label: 'Gearbox',
+            required: true,
+            values: TransmissionType.values,
+            selected: _gearbox,
+            labelOf: (v) => v.label,
+            onSelected: (v) => setState(() => _gearbox = v),
+            errorText: _triedStep0 && _gearbox == null ? 'Choose the gearbox' : null,
+          ),
+          ChoiceField<CarCondition>(
+            label: 'Condition',
+            required: true,
+            values: [
+              CarCondition.excellent,
+              CarCondition.good,
+              CarCondition.fair,
+              CarCondition.poor,
+              CarCondition.newCar,
+              if (_condition == CarCondition.old) CarCondition.old,
+            ],
+            selected: _condition,
+            labelOf: (v) => v.label,
+            onSelected: (v) => setState(() => _condition = v),
+            errorText: _triedStep0 && _condition == null ? 'Choose the condition' : null,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _stepHistory() {
+    final year = DateTime.now().year;
+    final needsResaleDetails = _condition == CarCondition.old;
+    return Form(
+      key: _formKeys[1],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          FormPanel(
+            title: 'Usage and ownership',
+            children: [
+              FieldPair(
+                AuthTextField(
+                  controller: _km,
+                  label: 'Kilometres driven',
+                  required: true,
+                  hint: 'e.g. 42000',
+                  keyboardType: TextInputType.number,
+                  validator: (v) => Validators.positiveNumber(v, field: 'Kilometres'),
+                ),
+                DropdownField<OwnershipType>(
+                  label: 'Ownership',
+                  required: needsResaleDetails,
+                  value: _ownership,
+                  items: [for (final o in OwnershipType.values) DropdownMenuItem(value: o, child: Text(o.label))],
+                  onChanged: (v) => setState(() => _ownership = v),
+                  validator: (v) => needsResaleDetails && v == null ? 'Required for resale' : null,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          FormPanel(
+            title: 'Registration',
+            subtitle: 'Used only for our check. Buyers never see the registration or chassis number.',
+            children: [
+              FieldPair(
+                AuthTextField(
+                  controller: _regNumber,
+                  label: 'Registration number',
+                  required: needsResaleDetails,
+                  hint: 'e.g. GJ01AB1234',
+                  textCapitalization: TextCapitalization.characters,
+                  validator: (v) {
+                    final s = (v ?? '').trim();
+                    if (s.isEmpty) return needsResaleDetails ? 'Required for resale' : null;
+                    if (s.length > 30) return 'Too long';
+                    return null;
+                  },
+                ),
+                AuthTextField(
+                  controller: _regYear,
+                  label: 'Year of registration',
+                  required: needsResaleDetails,
+                  hint: 'e.g. 2021',
+                  keyboardType: TextInputType.number,
+                  validator: (v) {
+                    final s = (v ?? '').trim();
+                    if (s.isEmpty) return needsResaleDetails ? 'Required for resale' : null;
+                    final n = int.tryParse(s);
+                    final made = int.tryParse(_year.text.trim());
+                    if (n == null || n > year) return 'Enter a valid year';
+                    if (made != null && n < made) return 'Cannot be before the year of manufacture';
+                    return null;
+                  },
+                ),
+              ),
+              AuthTextField(
+                controller: _vin,
+                label: 'Chassis number (VIN)',
+                required: needsResaleDetails,
+                hint: 'Printed on the RC',
+                textCapitalization: TextCapitalization.characters,
+                validator: (v) {
+                  final s = (v ?? '').trim();
+                  if (s.isEmpty) return needsResaleDetails ? 'Required for resale' : null;
+                  if (s.length > 100) return 'Too long';
+                  return null;
+                },
+              ),
+              DropdownField<String>(
+                label: 'RC status',
+                value: _rcStatus,
+                items: [
+                  for (final s in {'Active', 'Hypothecated', 'Transferred', ?_rcStatus}) DropdownMenuItem(value: s, child: Text(s)),
+                ],
+                onChanged: (v) => setState(() => _rcStatus = v),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          FormPanel(
+            title: 'Insurance',
+            children: [
+              FieldPair(
+                AuthTextField(controller: _insurer, label: 'Insurer', hint: 'e.g. ICICI Lombard'),
+                DropdownField<String>(
+                  label: 'Cover',
+                  value: _insuranceType,
+                  items: [
+                    for (final s in {'Comprehensive', 'Zero depreciation', 'Third party', ?_insuranceType}) DropdownMenuItem(value: s, child: Text(s)),
+                  ],
+                  onChanged: (v) => setState(() => _insuranceType = v),
+                ),
+              ),
+              DateField(
+                label: 'Valid until',
+                value: _insuranceExpiry,
+                firstDate: DateTime(2000),
+                lastDate: DateTime(DateTime.now().year + 6),
+                onChanged: (d) => setState(() => _insuranceExpiry = d),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _stepPlace() {
+    return Form(
+      key: _formKeys[2],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          FormPanel(
+            title: 'Where is the car?',
+            children: [
+              FieldPair(
+                AuthTextField(
+                  controller: _city,
+                  label: 'City',
+                  required: true,
+                  textCapitalization: TextCapitalization.words,
+                  validator: (v) => Validators.required(v, message: 'Enter the city'),
+                ),
+                DropdownField<String>(
+                  label: 'State',
+                  required: true,
+                  value: _state,
+                  items: [for (final s in indianStates) DropdownMenuItem(value: s, child: Text(s))],
+                  onChanged: (v) => setState(() => _state = v),
+                  validator: (v) => v == null ? 'Choose the state' : null,
+                ),
+              ),
+              AuthTextField(controller: _pin, label: 'PIN code', keyboardType: TextInputType.number, validator: (v) => validatePin(v)),
+            ],
+          ),
+          const SizedBox(height: 16),
+          FormPanel(
+            title: 'More about the car',
+            subtitle: 'Filled in from the catalogue where possible. Correct anything that differs.',
+            children: [
+              FieldPair(
+                AuthTextField(controller: _color, label: 'Colour', hint: 'e.g. Pearl White', textCapitalization: TextCapitalization.words),
+                AuthTextField(
+                  controller: _seats,
+                  label: 'Seats',
+                  keyboardType: TextInputType.number,
+                  validator: (v) {
+                    final s = (v ?? '').trim();
+                    if (s.isEmpty) return null;
+                    final n = int.tryParse(s);
+                    return (n == null || n < 1 || n > 20) ? 'Enter a number of seats' : null;
+                  },
+                ),
+              ),
+              FieldPair(
+                AuthTextField(controller: _engine, label: 'Engine (cc)', keyboardType: TextInputType.number, validator: (v) => Validators.positiveNumber(v, field: 'Engine', required: false)),
+                AuthTextField(controller: _power, label: 'Power (hp)', keyboardType: TextInputType.number, validator: (v) => Validators.positiveNumber(v, field: 'Power', required: false)),
+              ),
+              AuthTextField(
+                controller: _description,
+                label: 'Description',
+                maxLines: 5,
+                maxLength: 2000,
+                hint: 'Service history, recent work, anything a buyer should know.',
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          FormPanel(
+            title: 'Your price idea',
+            subtitle: 'Optional. You set the asking price when you create the listing.',
+            children: [
+              AuthTextField(
+                controller: _price,
+                label: 'Expected price (₹)',
+                hint: 'e.g. 650000',
+                keyboardType: TextInputType.number,
+                helper: _number(_price) == null ? null : formatInr(_number(_price)!),
+                onChanged: (_) => setState(() {}),
+                validator: (v) => Validators.positiveNumber(v, field: 'Price', required: false),
+              ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () => Navigator.of(context).pushNamed(AppRoutes.priceCheck),
+                  icon: const Icon(Icons.query_stats, size: 18),
+                  label: const Text('Not sure? Get a price estimate'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BottomBar extends StatelessWidget {
+  final int step;
+  final int total;
+  final bool saving;
+  final bool editing;
+  final VoidCallback? onBack;
+  final VoidCallback onNext;
+  final VoidCallback? onSaveNow;
+
+  const _BottomBar({
+    required this.step,
+    required this.total,
+    required this.saving,
+    required this.editing,
+    required this.onBack,
+    required this.onNext,
+    this.onSaveNow,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final last = step == total - 1;
+    return Material(
+      color: AppColors.surface,
+      child: Container(
+        decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.divider))),
+        child: SafeArea(
+          top: false,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 760),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                child: CallbackShortcuts(
+                  bindings: {const SingleActivator(LogicalKeyboardKey.enter, control: true): onNext},
+                  child: Row(
+                    children: [
+                      if (onBack != null) OutlinedButton(onPressed: saving ? null : onBack, child: const Text('Back')),
+                      const Spacer(),
+                      if (onSaveNow != null) ...[
+                        TextButton(
+                          onPressed: saving ? null : onSaveNow,
+                          child: Text(Breakpoints.isCompact(context) ? 'Save' : 'Save changes'),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      FilledButton(
+                        onPressed: saving ? null : onNext,
+                        child: saving
+                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white))
+                            : Text(last ? (editing ? 'Save changes' : 'Save car') : 'Continue'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

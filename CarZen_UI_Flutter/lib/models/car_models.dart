@@ -189,6 +189,8 @@ class CarRecord {
   final num? expectedMarketPrice;
   final bool isVerified;
   final CarApprovalStatus approvalStatus;
+  final DateTime? createdAtDate;
+  final DateTime? updatedAtDate;
 
   const CarRecord({
     required this.id,
@@ -208,6 +210,8 @@ class CarRecord {
     this.expectedMarketPrice,
     required this.isVerified,
     required this.approvalStatus,
+    this.createdAtDate,
+    this.updatedAtDate,
   });
 
   factory CarRecord.fromJson(Map<String, dynamic> json) => CarRecord(
@@ -228,6 +232,8 @@ class CarRecord {
         expectedMarketPrice: parseNumOrNull(json['expected_market_price']),
         isVerified: json['is_verified'] as bool? ?? false,
         approvalStatus: CarApprovalStatusX.fromApi(json['approval_status'] as String),
+        createdAtDate: json['created_at'] is String ? DateTime.tryParse(json['created_at'] as String) : null,
+        updatedAtDate: json['updated_at'] is String ? DateTime.tryParse(json['updated_at'] as String) : null,
       );
 }
 
@@ -248,6 +254,8 @@ class CarRecordDetail extends CarRecord {
   final String? postalCode;
   final String? description;
   final String? rejectionReason;
+  final int brandId;
+  final int modelId;
   final String brandName;
   final String modelName;
   final String variantName;
@@ -273,6 +281,8 @@ class CarRecordDetail extends CarRecord {
     super.expectedMarketPrice,
     required super.isVerified,
     required super.approvalStatus,
+    super.createdAtDate,
+    super.updatedAtDate,
     this.engineCc,
     this.horsepower,
     this.seatingCapacity,
@@ -286,6 +296,8 @@ class CarRecordDetail extends CarRecord {
     this.postalCode,
     this.description,
     this.rejectionReason,
+    this.brandId = 0,
+    this.modelId = 0,
     required this.brandName,
     required this.modelName,
     required this.variantName,
@@ -316,6 +328,8 @@ class CarRecordDetail extends CarRecord {
       expectedMarketPrice: parseNumOrNull(json['expected_market_price']),
       isVerified: json['is_verified'] as bool? ?? false,
       approvalStatus: CarApprovalStatusX.fromApi(json['approval_status'] as String),
+      createdAtDate: json['created_at'] is String ? DateTime.tryParse(json['created_at'] as String) : null,
+      updatedAtDate: json['updated_at'] is String ? DateTime.tryParse(json['updated_at'] as String) : null,
       engineCc: parseNumOrNull(json['engine_cc']),
       horsepower: parseNumOrNull(json['horsepower']),
       seatingCapacity: json['seating_capacity'] as int?,
@@ -330,6 +344,8 @@ class CarRecordDetail extends CarRecord {
       postalCode: json['postal_code'] as String?,
       description: json['description'] as String?,
       rejectionReason: json['rejection_reason'] as String?,
+      brandId: brand.id,
+      modelId: model.id,
       brandName: brand.name,
       modelName: model.name,
       variantName: variant.variantName,
@@ -342,4 +358,9 @@ class CarRecordDetail extends CarRecord {
           .toList(),
     );
   }
+}
+
+extension CarRecordDetailX on CarRecordDetail {
+  String get displayName => '$brandName $modelName';
+  String get fullTitle => '$manufacturingYear $brandName $modelName $variantName';
 }

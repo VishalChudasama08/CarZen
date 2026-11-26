@@ -122,4 +122,53 @@ class ListingFilters {
     if (city != null) count++;
     return count;
   }
+
+  /// URL query parameters for the Browse page (only values that are set).
+  Map<String, String> toQuery() => {
+        if (search != null) 'search': search!,
+        if (brandId != null) 'brandId': '$brandId',
+        if (modelId != null) 'modelId': '$modelId',
+        if (fuelType != null) 'fuelType': fuelType!.apiValue,
+        if (transmission != null) 'transmission': transmission!.apiValue,
+        if (condition != null) 'condition': condition!.apiValue,
+        if (minPrice != null) 'minPrice': '${minPrice!.round()}',
+        if (maxPrice != null) 'maxPrice': '${maxPrice!.round()}',
+        if (minYear != null) 'minYear': '$minYear',
+        if (maxYear != null) 'maxYear': '$maxYear',
+        if (maxMileage != null) 'maxKm': '${maxMileage!.round()}',
+        if (city != null) 'city': city!,
+        if (sort != ListingSort.newest) 'sort': sort.apiValue,
+      };
+
+  /// Reads [toQuery] back; unknown or malformed values are ignored.
+  factory ListingFilters.fromQuery(Map<String, String> q) {
+    T? pick<T>(List<T> values, String? raw, String Function(T) api) {
+      if (raw == null) return null;
+      for (final v in values) {
+        if (api(v) == raw) return v;
+      }
+      return null;
+    }
+
+    String? text(String key) {
+      final v = q[key]?.trim();
+      return (v == null || v.isEmpty) ? null : v;
+    }
+
+    return ListingFilters(
+      search: text('search'),
+      brandId: int.tryParse(q['brandId'] ?? ''),
+      modelId: int.tryParse(q['modelId'] ?? ''),
+      fuelType: pick(FuelType.values, q['fuelType'], (v) => v.apiValue),
+      transmission: pick(TransmissionType.values, q['transmission'], (v) => v.apiValue),
+      condition: pick(CarCondition.values, q['condition'], (v) => v.apiValue),
+      minPrice: num.tryParse(q['minPrice'] ?? ''),
+      maxPrice: num.tryParse(q['maxPrice'] ?? ''),
+      minYear: int.tryParse(q['minYear'] ?? ''),
+      maxYear: int.tryParse(q['maxYear'] ?? ''),
+      maxMileage: num.tryParse(q['maxKm'] ?? ''),
+      city: text('city'),
+      sort: pick(ListingSort.values, q['sort'], (v) => v.apiValue) ?? ListingSort.newest,
+    );
+  }
 }

@@ -2,13 +2,13 @@ import 'package:carzen_flutter/models/service_models.dart';
 import 'package:carzen_flutter/routes/app_routes.dart';
 import 'package:carzen_flutter/services/service_request_api.dart';
 import 'package:carzen_flutter/theme/app_theme.dart';
-import 'package:carzen_flutter/widgets/carzen_nav_bar.dart';
 import 'package:carzen_flutter/widgets/network_photo.dart';
 import 'package:carzen_flutter/widgets/page_container.dart';
 import 'package:carzen_flutter/widgets/paged_controller.dart';
 import 'package:carzen_flutter/widgets/pagination_bar.dart';
 import 'package:carzen_flutter/widgets/service_widgets.dart';
 import 'package:carzen_flutter/widgets/state_views.dart';
+import 'package:carzen_flutter/widgets/app_shell.dart';
 import 'package:flutter/material.dart';
 
 /// The signed-in user's service requests — `GET /v1/service-requests`
@@ -52,9 +52,10 @@ class _MyServiceRequestsScreenState extends State<MyServiceRequestsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: const CarZenNavBar(current: NavSection.services, title: 'My service requests'),
-      bottomNavigationBar: const CarZenBottomBar(current: NavSection.services),
+    return AppScaffold(
+      section: NavSection.services,
+      title: 'My bookings',
+      showBottomNav: true,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => Navigator.of(context).pushNamed(AppRoutes.serviceBook),
         icon: const Icon(Icons.add_rounded),
@@ -74,9 +75,8 @@ class _MyServiceRequestsScreenState extends State<MyServiceRequestsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const PageHeader(
-                      title: 'Services',
+                      title: 'Workshop',
                       subtitle: 'Track your bookings, or look back at work done on your cars.',
-                      icon: Icons.home_repair_service_rounded,
                     ),
                     const SizedBox(height: AppSpacing.lg),
                     const ServiceTabs(current: ServicesTab.requests),

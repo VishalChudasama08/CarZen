@@ -35,4 +35,31 @@ class AddressService {
     });
     return AddressRecord.fromJson(json as Map<String, dynamic>);
   }
+
+  /// `PATCH /v1/address/{id}` - the backend expects the full address.
+  Future<AddressRecord> update(
+    int id, {
+    required String addressLine1,
+    String? addressLine2,
+    String? landmark,
+    required String city,
+    required String state,
+    required String postalCode,
+    String country = 'India',
+    bool? isDefault,
+  }) async {
+    final json = await _client.patch('/address/$id', body: {
+      'address_line_1': addressLine1,
+      'address_line_2': (addressLine2 == null || addressLine2.isEmpty) ? null : addressLine2,
+      'landmark': (landmark == null || landmark.isEmpty) ? null : landmark,
+      'city': city,
+      'state': state,
+      'country': country,
+      'postal_code': postalCode,
+      'is_default': ?isDefault,
+    });
+    return AddressRecord.fromJson(json as Map<String, dynamic>);
+  }
+
+  Future<void> delete(int id) => _client.delete('/address/$id');
 }

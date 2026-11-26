@@ -1,26 +1,28 @@
-// TODO(Ayush): gap D — admin users list is unpaginated (paginated client-side)
-import 'package:flutter/material.dart';
 import 'package:carzen_flutter/models/pagination.dart';
 import 'package:carzen_flutter/models/user_response.dart';
 import 'package:carzen_flutter/routes/app_routes.dart';
 import 'package:carzen_flutter/services/api_exception.dart';
 import 'package:carzen_flutter/services/profile_service.dart';
+import 'package:carzen_flutter/services/session_controller.dart';
 import 'package:carzen_flutter/theme/app_theme.dart';
+import 'package:carzen_flutter/utils/formatters.dart';
 import 'package:carzen_flutter/widgets/admin_user_dialogs.dart';
-import 'package:carzen_flutter/widgets/carzen_nav_bar.dart';
-import 'package:carzen_flutter/widgets/content_width.dart';
-import 'package:carzen_flutter/widgets/page_container.dart';
+import 'package:carzen_flutter/widgets/admin_widgets.dart';
+import 'package:carzen_flutter/widgets/app_shell.dart';
 import 'package:carzen_flutter/widgets/pagination_bar.dart';
+import 'package:carzen_flutter/widgets/paged_list_view.dart';
 import 'package:carzen_flutter/widgets/state_views.dart';
-import 'package:carzen_flutter/widgets/surface_card.dart';
-import 'package:carzen_flutter/widgets/user_badges.dart';
+import 'package:carzen_flutter/widgets/status_pill.dart';
+import 'package:flutter/material.dart';
 
-/// Admin user management.
-///
-/// * `GET    /v1/admin/users`                    - the list
-/// * `GET    /v1/admin/users/{id}`               - details (see [AdminUserDetailScreen])
-/// * `PATCH  /v1/admin/users/{id}/role-status`   - status (roles restricted)
-/// * `DELETE /v1/admin/users/{id}`               - delete (soft delete on the server)
+StatusTone userStatusTone(String status) => switch (status) {
+      'active' => StatusTone.success,
+      'blocked' => StatusTone.danger,
+      _ => StatusTone.neutral,
+    };
+
+/// Users - `GET /v1/admin/users` returns everyone in one list, so search,
+/// filters and paging happen here.
 class AdminUsersScreen extends StatefulWidget {
   const AdminUsersScreen({super.key});
 
@@ -29,19 +31,19 @@ class AdminUsersScreen extends StatefulWidget {
 }
 
 class _AdminUsersScreenState extends State<AdminUsersScreen> {
-  final _profileService = ProfileService();
-  final TextEditingController _search = TextEditingController();
+  static const _pageSize = 15;
+  final _service = ProfileService();
 
-  List<UserResponse> _users = const [];
-  int? _myId;
-  bool _loading = true;
+  List<UserResponse>? _users;
   Object? _error;
+  bool _refreshing = false;
   String _query = '';
-  String? _statusFilter;
+  String? _status;
+  String? _role;
+  int _page = 1;
   int? _busyId;
 
-  int _page = 1;
-  static const int _pageSize = 10;
+  int? get _myId => SessionController.instance.user?.id;
 
   @override
   void initState() {
@@ -49,64 +51,26 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     _load();
   }
 
-  @override
-  void dispose() {
-    _search.dispose();
-    super.dispose();
-  }
-
-  void _snack(String message, {bool error = false}) {
-    if (!mounted) return;
-    showAppSnack(context, message, error: error);
-  }
-
-  Future<void> _load({bool silent = false}) async {
-    if (!silent) {
-      setState(() {
-        _loading = true;
-        _error = null;
-      });
-    }
-    try {
-      final users = await _profileService.adminListUsers();
-      var me = _myId;
-      if (me == null) {
-        try {
-          me = (await _profileService.getMe()).id;
-        } on ApiException {
-          // Ignored
-        }
-      }
-      if (!mounted) return;
-      setState(() {
-        _users = users;
-        _myId = me;
-        _loading = false;
-        _error = null;
-      });
-    } on ApiException catch (e) {
-      _onLoadError(e, silent);
-    } catch (_) {
-      _onLoadError(const ApiException('The server sent an unexpected response.'), silent);
-    }
-  }
-
-  void _onLoadError(ApiException error, bool silent) {
-    if (!mounted) return;
-    if (silent) {
-      _snack(error.message, error: true);
-      return;
-    }
+  Future<void> _load() async {
     setState(() {
-      _error = error;
-      _loading = false;
+      _error = null;
+      _refreshing = true;
     });
+    try {
+      final users = await _service.adminListUsers();
+      if (mounted) setState(() => _users = users);
+    } catch (e) {
+      if (mounted) setState(() => _error = e);
+    } finally {
+      if (mounted) setState(() => _refreshing = false);
+    }
   }
 
   List<UserResponse> get _filtered {
-    final q = _query.trim().toLowerCase();
-    return _users.where((u) {
-      if (_statusFilter != null && u.status != _statusFilter) return false;
+    final q = _query.toLowerCase();
+    return (_users ?? const <UserResponse>[]).where((u) {
+      if (_status != null && u.status != _status) return false;
+      if (_role != null && u.role != _role) return false;
       if (q.isEmpty) return true;
       return u.fullName.toLowerCase().contains(q) ||
           u.username.toLowerCase().contains(q) ||
@@ -116,26 +80,17 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     }).toList();
   }
 
-  Future<void> _openDetails(UserResponse user) async {
-    await Navigator.of(context).pushNamed(AppRoutes.adminUser(user.id));
-    if (mounted) _load(silent: true);
-  }
-
-  Future<void> _edit(UserResponse user) async {
+  Future<void> _editStatus(UserResponse user) async {
     final change = await showUserRoleStatusDialog(context, user);
     if (change == null || !mounted) return;
     setState(() => _busyId = user.id);
     try {
-      final updated = await _profileService.adminUpdateRoleStatus(
-        user.id,
-        role: change.role,
-        status: change.status,
-      );
+      final updated = await _service.adminUpdateRoleStatus(user.id, role: change.role, status: change.status);
       if (!mounted) return;
-      setState(() => _users = [for (final u in _users) u.id == updated.id ? updated : u]);
-      _snack('Updated @${updated.username}.');
+      setState(() => _users = [for (final u in _users!) u.id == updated.id ? updated : u]);
+      showAppSnack(context, '@${updated.username} is now ${updated.statusLabel.toLowerCase()}');
     } on ApiException catch (e) {
-      _snack(e.message, error: true);
+      if (mounted) showAppSnack(context, e.message, error: true);
     } finally {
       if (mounted) setState(() => _busyId = null);
     }
@@ -145,353 +100,155 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     if (!await confirmDeleteUser(context, user) || !mounted) return;
     setState(() => _busyId = user.id);
     try {
-      await _profileService.adminDeleteUser(user.id);
+      await _service.adminDeleteUser(user.id);
       if (!mounted) return;
-      setState(() => _users = _users.where((u) => u.id != user.id).toList());
-      _snack('@${user.username} was deleted.');
+      setState(() => _users = _users!.where((u) => u.id != user.id).toList());
+      showAppSnack(context, '@${user.username} deleted');
     } on ApiException catch (e) {
-      _snack(e.message, error: true);
+      if (mounted) showAppSnack(context, e.message, error: true);
     } finally {
       if (mounted) setState(() => _busyId = null);
     }
   }
 
+  void _open(UserResponse u) => Navigator.of(context).pushNamed(AppRoutes.adminUser(u.id)).then((_) => _load());
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: const CarZenNavBar(
-        current: NavSection.adminUsers,
-        title: 'Users',
-        fallbackRoute: AppRoutes.admin,
-      ),
-      bottomNavigationBar: const CarZenBottomBar(current: NavSection.adminUsers),
-      body: SafeArea(child: ContentWidth(maxWidth: 1000, child: _buildBody())),
-    );
-  }
-
-  Widget _buildBody() {
-    if (_loading) return const LoadingView(label: 'Loading users...');
-    if (_error != null) {
-      return ApiErrorView(error: _error!, onRetry: _load, fallback: 'Could not load users.');
-    }
-    if (_users.isEmpty) {
-      return const EmptyStateView(
-        icon: Icons.group_outlined,
-        title: 'No users yet',
-        message: 'Registered users will appear here.',
-      );
-    }
-
+    final users = _users;
     final filtered = _filtered;
-    final total = filtered.length;
-    final totalPages = (total / _pageSize).ceil();
-    final safePage = _page > (totalPages > 0 ? totalPages : 1) ? 1 : _page;
-    final pageItems = filtered.skip((safePage - 1) * _pageSize).take(_pageSize).toList();
-    final meta = PaginationMeta(
-      page: safePage,
-      limit: _pageSize,
-      total: total,
-      totalPages: totalPages > 0 ? totalPages : 1,
-    );
+    final totalPages = (filtered.length / _pageSize).ceil().clamp(1, 1 << 20);
+    final page = _page.clamp(1, totalPages);
+    final pageItems = filtered.skip((page - 1) * _pageSize).take(_pageSize).toList();
+    final counts = <String, int>{};
+    for (final u in users ?? const <UserResponse>[]) {
+      counts[u.status] = (counts[u.status] ?? 0) + 1;
+    }
 
-    return RefreshIndicator(
-      onRefresh: () => _load(silent: true),
-      child: CustomScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        slivers: [
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-            sliver: SliverToBoxAdapter(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const PageHeader(
-                    title: 'Users',
-                    subtitle: 'Manage platform user accounts and access status.',
-                    icon: Icons.group_rounded,
-                  ),
-                  const SizedBox(height: 16),
-                  _Header(users: _users),
-                ],
-              ),
-            ),
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-            sliver: SliverToBoxAdapter(child: _buildFilters(filtered.length)),
-          ),
-          if (filtered.isEmpty)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.only(top: 24),
-                child: EmptyStateView(
-                  icon: Icons.search_off_rounded,
-                  title: 'No users match',
-                  message: 'Try a different search query or clear the status filter.',
-                  action: OutlinedButton(
-                    onPressed: () => setState(() {
-                      _search.clear();
-                      _query = '';
-                      _statusFilter = null;
-                      _page = 1;
-                    }),
-                    child: const Text('Clear search'),
-                  ),
-                ),
-              ),
-            )
-          else ...[
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              sliver: SliverList.separated(
-                itemCount: pageItems.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 8),
-                itemBuilder: (context, index) {
-                  final user = pageItems[index];
-                  final isMe = user.id == _myId;
-                  return _CompactUserCard(
-                    user: user,
-                    isMe: isMe,
-                    busy: _busyId == user.id,
-                    onView: () => _openDetails(user),
-                    onEdit: isMe ? null : () => _edit(user),
-                    onDelete: isMe ? null : () => _delete(user),
-                  );
-                },
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
-                child: PaginationBar(
-                  meta: meta,
-                  itemLabel: 'users',
-                  onPageChanged: (newPage) => setState(() => _page = newPage),
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFilters(int shown) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        TextField(
-          controller: _search,
-          onChanged: (value) => setState(() {
-            _query = value;
+    return AdminPage(
+      section: NavSection.adminUsers,
+      title: 'Users',
+      subtitle: users == null
+          ? 'Everyone with a CarZen account.'
+          : '${formatCount(users.length)} accounts: ${counts['active'] ?? 0} active, ${counts['inactive'] ?? 0} inactive, ${counts['blocked'] ?? 0} blocked.',
+      onRefresh: _load,
+      filters: AdminFilterBar(children: [
+        SegmentFilter<String?>(
+          options: const [(null, 'All'), ('active', 'Active'), ('inactive', 'Inactive'), ('blocked', 'Blocked')],
+          selected: _status,
+          onChanged: (v) => setState(() {
+            _status = v;
             _page = 1;
           }),
-          decoration: InputDecoration(
-            hintText: 'Search by name or email...',
-            isDense: true,
-            prefixIcon: const Icon(Icons.search_rounded),
-            suffixIcon: _query.isEmpty
-                ? null
-                : IconButton(
-                    icon: const Icon(Icons.close_rounded),
-                    onPressed: () => setState(() {
-                      _search.clear();
-                      _query = '';
-                      _page = 1;
-                    }),
-                  ),
-          ),
         ),
-        const SizedBox(height: 10),
-        Wrap(
-          spacing: 8,
-          runSpacing: 4,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            const Text('Status:', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-            for (final (value, text) in const [
-              (null, 'All'),
-              ('active', 'Active'),
-              ('inactive', 'Inactive'),
-              ('blocked', 'Blocked')
-            ])
-              ChoiceChip(
-                label: Text(text),
-                selected: _statusFilter == value,
-                onSelected: (_) => setState(() {
-                  _statusFilter = value;
-                  _page = 1;
+        SegmentFilter<String?>(
+          options: const [(null, 'Any role'), ('user', 'Customers'), ('admin', 'Admins')],
+          selected: _role,
+          onChanged: (v) => setState(() {
+            _role = v;
+            _page = 1;
+          }),
+        ),
+        AdminSearchField(
+          hint: 'Name, username, email or phone',
+          onSubmitted: (v) => setState(() {
+            _query = v;
+            _page = 1;
+          }),
+        ),
+      ]),
+      child: Builder(builder: (context) {
+        final frame = BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppRadii.lg),
+          border: Border.all(color: AppColors.divider),
+        );
+        if (users == null && _error != null) {
+          return Container(decoration: frame, child: ApiErrorView(error: _error!, onRetry: _load, compact: true));
+        }
+        if (users == null) {
+          return Container(
+            decoration: frame,
+            padding: const EdgeInsets.all(16),
+            child: const Column(children: [SkeletonLine(), SizedBox(height: 14), SkeletonLine(), SizedBox(height: 14), SkeletonLine()]),
+          );
+        }
+        if (filtered.isEmpty) {
+          return Container(
+            decoration: frame,
+            child: EmptyStateView(
+              compact: true,
+              icon: Icons.person_search_outlined,
+              title: 'No users match',
+              message: 'Try a different search or clear the filters.',
+              action: OutlinedButton(
+                onPressed: () => setState(() {
+                  _query = '';
+                  _status = null;
+                  _role = null;
                 }),
-                showCheckmark: false,
-                selectedColor: AppColors.cyanTint,
-                labelStyle: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  color: _statusFilter == value ? AppColors.secondary : AppColors.textPrimary,
+                child: const Text('Clear filters'),
+              ),
+            ),
+          );
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (_refreshing) const Padding(padding: EdgeInsets.only(bottom: 8), child: LinearProgressIndicator(minHeight: 2)),
+            AdminTable<UserResponse>(
+              items: pageItems,
+              onTap: _open,
+              actionsWidth: 150,
+              cardTitle: (u) => Text(u.fullName.isEmpty ? '@${u.username}' : u.fullName),
+              cardBadge: (u) => StatusPill(label: u.statusLabel, tone: userStatusTone(u.status)),
+              columns: [
+                AdminColumn(
+                  'Name',
+                  (u) => Row(children: [
+                    CircleAvatar(
+                      radius: 17,
+                      backgroundColor: u.isAdmin ? AppColors.ink : AppColors.chromeTint,
+                      child: Text(u.initials, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: u.isAdmin ? Colors.white : AppColors.chrome)),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(child: StackedCell(u.fullName.isEmpty ? '@${u.username}' : u.fullName, '@${u.username}${u.id == _myId ? '  (you)' : ''}')),
+                  ]),
+                  flex: 4,
+                  showInCard: false,
                 ),
-                side: BorderSide(color: _statusFilter == value ? AppColors.secondary : AppColors.divider),
-              ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _Header extends StatelessWidget {
-  final List<UserResponse> users;
-  const _Header({required this.users});
-
-  @override
-  Widget build(BuildContext context) {
-    final active = users.where((u) => u.isActive && !u.isBlocked).length;
-    final blocked = users.where((u) => u.isBlocked).length;
-
-    return Row(
-      children: [
-        Expanded(
-          child: _Metric(
-            label: 'Total users',
-            value: users.length,
-            icon: Icons.people_outline_rounded,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _Metric(
-            label: 'Active',
-            value: active,
-            icon: Icons.check_circle_outline_rounded,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _Metric(
-            label: 'Blocked',
-            value: blocked,
-            icon: Icons.block_rounded,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _Metric extends StatelessWidget {
-  final String label;
-  final int value;
-  final IconData icon;
-
-  const _Metric({required this.label, required this.value, required this.icon});
-
-  @override
-  Widget build(BuildContext context) {
-    return SurfaceCard(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      child: Row(
-        children: [
-          Icon(icon, color: AppColors.secondary, size: 20),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('$value', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
-                Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 11.5)),
+                AdminColumn('Email', (u) => TextCell(u.email), flex: 4),
+                AdminColumn('Phone', (u) => TextCell(u.phoneNumber ?? 'Not added'), flex: 2),
+                AdminColumn('Role', (u) => u.isAdmin ? const StatusPill(label: 'Admin', tone: StatusTone.highlight, icon: Icons.shield_outlined) : const TextCell('Customer'), flex: 2),
+                AdminColumn('Joined', (u) => TextCell(formatDate(u.createdAtDate)), flex: 2),
+                AdminColumn('Status', (u) => StatusPill(label: u.statusLabel, tone: userStatusTone(u.status)), flex: 2, showInCard: false),
               ],
+              actions: (u) {
+                if (_busyId == u.id) return const [SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))];
+                final me = u.id == _myId;
+                return [
+                  RowAction('View', onPressed: () => _open(u)),
+                  if (!me)
+                    PopupMenuButton<String>(
+                      tooltip: 'More',
+                      onSelected: (v) => v == 'status' ? _editStatus(u) : _delete(u),
+                      itemBuilder: (_) => const [
+                        PopupMenuItem(value: 'status', child: Text('Change status')),
+                        PopupMenuItem(value: 'delete', child: Text('Delete user', style: TextStyle(color: AppColors.danger))),
+                      ],
+                    ),
+                ];
+              },
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Compact user row: Name only + status pill, whole row tappable, View button.
-class _CompactUserCard extends StatelessWidget {
-  final UserResponse user;
-  final bool isMe;
-  final bool busy;
-  final VoidCallback onView;
-  final VoidCallback? onEdit;
-  final VoidCallback? onDelete;
-
-  const _CompactUserCard({
-    required this.user,
-    required this.isMe,
-    required this.busy,
-    required this.onView,
-    required this.onEdit,
-    required this.onDelete,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SurfaceCard(
-      onTap: onView,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 18,
-            backgroundColor: AppColors.primary,
-            child: Text(
-              user.initials,
-              style: const TextStyle(color: AppColors.cyan, fontWeight: FontWeight.w800, fontSize: 12),
+            const SizedBox(height: 16),
+            PaginationBar(
+              meta: PaginationMeta(page: page, limit: _pageSize, total: filtered.length, totalPages: totalPages),
+              itemLabel: 'users',
+              onPageChanged: (p) => setState(() => _page = p),
             ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Row(
-              children: [
-                Flexible(
-                  child: Text(
-                    user.fullName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-                  ),
-                ),
-                if (isMe) ...[
-                  const SizedBox(width: 8),
-                  const YouBadge(),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          StatusBadge(status: user.status),
-          const SizedBox(width: 10),
-          if (busy)
-            const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.secondary),
-            )
-          else ...[
-            FilledButton.tonal(
-              onPressed: onView,
-              style: FilledButton.styleFrom(
-                minimumSize: const Size(60, 36),
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-              ),
-              child: const Text('View', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-            ),
-            if (onEdit != null)
-              IconButton(
-                tooltip: 'Change status',
-                icon: const Icon(Icons.edit_outlined, size: 18),
-                onPressed: onEdit,
-              ),
-            if (onDelete != null)
-              IconButton(
-                tooltip: 'Delete user',
-                icon: const Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.favorite),
-                onPressed: onDelete,
-              ),
           ],
-        ],
-      ),
+        );
+      }),
     );
   }
 }

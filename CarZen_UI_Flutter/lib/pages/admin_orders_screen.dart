@@ -5,17 +5,18 @@ import 'package:carzen_flutter/services/api_exception.dart';
 import 'package:carzen_flutter/services/order_service.dart';
 import 'package:carzen_flutter/theme/app_theme.dart';
 import 'package:carzen_flutter/utils/formatters.dart';
-import 'package:carzen_flutter/widgets/carzen_nav_bar.dart';
-import 'package:carzen_flutter/widgets/page_container.dart';
+import 'package:carzen_flutter/widgets/admin_widgets.dart';
+import 'package:carzen_flutter/widgets/app_shell.dart';
 import 'package:carzen_flutter/widgets/paged_controller.dart';
 import 'package:carzen_flutter/widgets/paged_list_view.dart';
 import 'package:carzen_flutter/widgets/state_views.dart';
 import 'package:carzen_flutter/widgets/status_pill.dart';
-import 'package:carzen_flutter/widgets/surface_card.dart';
 import 'package:flutter/material.dart';
 
-/// Admin view for the backend's real `/v1/admin/orders` workflow
-/// (paginated, filterable by status).
+const _orderStatuses = ['pending', 'confirmed', 'processing', 'completed', 'cancelled', 'rejected'];
+
+/// Orders - `GET /v1/admin/orders`, `PATCH /v1/admin/orders/{id}/status` and
+/// cash confirmation through `POST /v1/payments/{id}/confirm-cash`.
 class AdminOrdersScreen extends StatefulWidget {
   const AdminOrdersScreen({super.key});
 
@@ -24,19 +25,13 @@ class AdminOrdersScreen extends StatefulWidget {
 }
 
 class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
-  static const _statuses = ['pending', 'confirmed', 'processing', 'completed', 'cancelled', 'rejected'];
   final _service = OrderService();
-  late final PagedController<OrderRecord> _paged;
   String? _status;
-
-  @override
-  void initState() {
-    super.initState();
-    _paged = PagedController<OrderRecord>(
-      limit: 10,
-      fetch: (page, limit) => _service.listAdminOrders(page: page, limit: limit, status: _status),
-    )..load();
-  }
+  final Set<int> _busy = {};
+  late final _paged = PagedController<OrderRecord>(
+    limit: 12,
+    fetch: (p, l) => _service.listAdminOrders(page: p, limit: l, status: _status),
+  )..load();
 
   @override
   void dispose() {
@@ -44,185 +39,220 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
     super.dispose();
   }
 
-  void _setStatus(String? status) {
-    _status = status;
-    _paged.reset();
-  }
-
-  Future<void> _changeStatus(OrderRecord order) async {
-    var selected = order.status;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text('Order #${order.id}'),
-          content: DropdownButtonFormField<String>(
-            initialValue: selected,
-            decoration: const InputDecoration(labelText: 'Status'),
-            items: _statuses.map((value) => DropdownMenuItem(value: value, child: Text(humanizeStatus(value)))).toList(),
-            onChanged: (value) => setDialogState(() => selected = value ?? selected),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-            FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Update')),
-          ],
-        ),
-      ),
-    );
-    if (confirmed != true || selected == order.status) return;
+  Future<void> _run(OrderRecord o, Future<void> Function() action, String done) async {
+    setState(() => _busy.add(o.id));
     try {
-      await _service.updateAdminOrderStatus(order.id, selected);
+      await action();
       if (!mounted) return;
-      showAppSnack(context, 'Order #${order.id} is now ${humanizeStatus(selected).toLowerCase()}.');
+      showAppSnack(context, done);
       await _paged.refresh();
-    } on ApiException catch (error) {
-      if (mounted) showAppSnack(context, error.message, error: true);
-    }
-  }
-
-  Future<void> _confirmCash(OrderRecord order) async {
-    final noteCtrl = TextEditingController();
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Confirm cash for Order #${order.id}?'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Amount: ${formatInr(order.amount)}'),
-            const SizedBox(height: 10),
-            TextField(
-              controller: noteCtrl,
-              decoration: const InputDecoration(labelText: 'Notes (optional)'),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Confirm Cash'),
-          ),
-        ],
-      ),
-    );
-    final notes = noteCtrl.text;
-    noteCtrl.dispose();
-    if (ok != true) return;
-
-    try {
-      final payment = await _service.getOrderPayment(order.id);
-      if (payment != null) {
-        await _service.adminConfirmCash(payment.id, notes: notes);
-        if (!mounted) return;
-        showAppSnack(context, 'Cash confirmed for Order #${order.id}.');
-        await _paged.refresh();
-      } else {
-        if (!mounted) return;
-        showAppSnack(context, 'No pending cash payment row found for this order.', error: true);
-      }
     } on ApiException catch (e) {
       if (mounted) showAppSnack(context, e.message, error: true);
+    } finally {
+      if (mounted) setState(() => _busy.remove(o.id));
     }
   }
 
-  Widget _chip(String label, String? value) {
-    final on = _status == value;
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: ChoiceChip(
-        label: Text(label),
-        selected: on,
-        showCheckmark: false,
-        selectedColor: AppColors.cyanTint,
-        side: BorderSide(color: on ? AppColors.secondary : AppColors.divider),
-        labelStyle: TextStyle(fontWeight: FontWeight.w700, color: on ? AppColors.secondary : AppColors.textPrimary),
-        onSelected: (_) => _setStatus(value),
-      ),
+  Future<void> _changeStatus(OrderRecord o) async {
+    final target = await showDialog<String>(context: context, builder: (_) => _StatusDialog(order: o));
+    if (target == null || target == o.status) return;
+    await _run(o, () => _service.updateAdminOrderStatus(o.id, target), 'Order #${o.id} is now ${humanizeStatus(target).toLowerCase()}. Buyer and seller were notified.');
+  }
+
+  Future<void> _confirmCash(OrderRecord o) async {
+    setState(() => _busy.add(o.id));
+    final payment = await _service.getOrderPayment(o.id);
+    if (!mounted) return;
+    setState(() => _busy.remove(o.id));
+    if (payment == null || !payment.isCash || !payment.isPending) {
+      showAppSnack(context, 'There is no cash payment waiting for confirmation on this order.', error: true);
+      return;
+    }
+    final note = await showReasonDialog(
+      context,
+      title: 'Confirm cash for order #${o.id}?',
+      message: 'Only confirm once ${formatInr(payment.amount)} has been received. This marks the order as paid.',
+      label: 'Note',
+      required: false,
+      confirmLabel: 'Confirm cash received',
     );
+    if (note == null) return;
+    await _run(o, () => _service.adminConfirmCash(payment.id, notes: note.isEmpty ? null : note), 'Cash payment confirmed for order #${o.id}');
+  }
+
+  void _showDetails(OrderRecord o) {
+    showDialog<void>(context: context, builder: (_) => _OrderDetails(order: o));
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: const CarZenNavBar(
-          current: NavSection.adminOrders,
-          title: 'Orders',
-          fallbackRoute: AppRoutes.admin,
+  Widget build(BuildContext context) {
+    return AdminPage(
+      section: NavSection.adminOrders,
+      title: 'Orders',
+      subtitle: 'Purchase requests between buyers and sellers. Step in only when a deal is stuck.',
+      onRefresh: _paged.refresh,
+      filters: SegmentFilter<String?>(
+        options: [(null, 'All'), for (final s in _orderStatuses) (s, humanizeStatus(s))],
+        selected: _status,
+        onChanged: (v) {
+          setState(() => _status = v);
+          _paged.reset();
+        },
+      ),
+      child: AdminPagedTable<OrderRecord>(
+        controller: _paged,
+        itemLabel: 'orders',
+        empty: EmptyStateView(
+          compact: true,
+          icon: Icons.receipt_long_outlined,
+          title: _status == null ? 'No orders yet' : 'No ${humanizeStatus(_status!).toLowerCase()} orders',
+          message: 'Try another status.',
         ),
-        bottomNavigationBar: const CarZenBottomBar(current: NavSection.adminOrders),
-        body: SafeArea(
-          bottom: false,
-          child: PagedListView<OrderRecord>(
-            controller: _paged,
-            maxWidth: 1000,
-            itemLabel: 'orders',
-            header: AnimatedBuilder(
-              animation: _paged,
-              builder: (context, _) => PageHeader(
-                title: 'Orders',
-                subtitle: _paged.meta == null
-                    ? 'Purchase requests from buyers.'
-                    : '${formatCount(_paged.meta!.total)} order${_paged.meta!.total == 1 ? '' : 's'}${_status == null ? '' : ' with status ${_status!}'}.',
-                icon: Icons.local_shipping_rounded,
+        builder: (context, items) => AdminTable<OrderRecord>(
+          items: items,
+          onTap: _showDetails,
+          actionsWidth: 170,
+          cardTitle: (o) => Text(o.listingTitle),
+          cardBadge: (o) => StatusPill(label: humanizeStatus(o.status), tone: orderTone(o.status)),
+          columns: [
+            AdminColumn('Car', (o) => StackedCell(o.listingTitle, 'Order #${o.id}  |  ${formatDate(o.createdAt)}'), flex: 5, showInCard: false),
+            AdminColumn('Buyer', (o) => TextCell(o.buyer?.displayName ?? 'User #${o.buyerId}'), flex: 3),
+            AdminColumn('Seller', (o) => TextCell(o.seller?.displayName ?? 'User #${o.sellerId}'), flex: 3),
+            AdminColumn('Amount', (o) => Text(formatLakh(o.amount), style: AppText.figures(14)), flex: 2),
+            AdminColumn(
+              'Payment',
+              (o) => StatusPill(label: humanizeStatus(o.paymentStatus), tone: o.isPaid ? StatusTone.success : StatusTone.warning),
+              flex: 2,
+            ),
+            AdminColumn('Status', (o) => StatusPill(label: humanizeStatus(o.status), tone: orderTone(o.status)), flex: 2, showInCard: false),
+          ],
+          actions: (o) {
+            if (_busy.contains(o.id)) return const [SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))];
+            final open = o.status != 'cancelled' && o.status != 'rejected';
+            return [
+              RowAction('Status', onPressed: () => _changeStatus(o)),
+              PopupMenuButton<String>(
+                tooltip: 'More',
+                onSelected: (v) {
+                  if (v == 'cash') _confirmCash(o);
+                  if (v == 'details') _showDetails(o);
+                  if (v == 'buyer') Navigator.of(context).pushNamed(AppRoutes.adminUser(o.buyerId));
+                  if (v == 'seller') Navigator.of(context).pushNamed(AppRoutes.adminUser(o.sellerId));
+                },
+                itemBuilder: (_) => [
+                  const PopupMenuItem(value: 'details', child: Text('Order details')),
+                  if (open && !o.isPaid) const PopupMenuItem(value: 'cash', child: Text('Confirm cash payment')),
+                  const PopupMenuItem(value: 'buyer', child: Text('View buyer')),
+                  const PopupMenuItem(value: 'seller', child: Text('View seller')),
+                ],
               ),
-            ),
-            filters: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(children: [_chip('All', null), for (final s in _statuses) _chip(humanizeStatus(s), s)]),
-            ),
-            empty: EmptyStateView(
-              icon: Icons.receipt_long_outlined,
-              title: _status == null ? 'No orders' : 'No ${_status!} orders',
-              message: _status == null ? 'No orders are available to manage.' : 'Try another status.',
-              action: _status == null ? null : OutlinedButton(onPressed: () => _setStatus(null), child: const Text('Show all')),
-            ),
-            errorFallback: 'Could not load orders.',
-            itemBuilder: (context, order) {
-              final isPaid = order.paymentStatus.toLowerCase() == 'paid';
-              return SurfaceCard(
-                onTap: () => _changeStatus(order),
-                child: Row(
+            ];
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _StatusDialog extends StatefulWidget {
+  final OrderRecord order;
+  const _StatusDialog({required this.order});
+
+  @override
+  State<_StatusDialog> createState() => _StatusDialogState();
+}
+
+class _StatusDialogState extends State<_StatusDialog> {
+  late String _status = widget.order.status;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('Change order #${widget.order.id}'),
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(minWidth: 300, maxWidth: 440),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(widget.order.listingTitle, style: const TextStyle(color: AppColors.textSecondary)),
+              const SizedBox(height: 8),
+              RadioGroup<String>(
+                groupValue: _status,
+                onChanged: (v) => setState(() => _status = v ?? _status),
+                child: Column(
                   children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(color: AppColors.cyanTint, borderRadius: BorderRadius.circular(AppRadii.md)),
-                      child: const Icon(Icons.receipt_long_rounded, color: AppColors.secondary),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(order.listingTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.titleMedium),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Order #${order.id} · ${formatInr(order.amount)} · Payment: ${humanizeStatus(order.paymentStatus)}',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
+                    for (final s in _orderStatuses)
+                      RadioListTile<String>(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        value: s,
+                        title: Text(humanizeStatus(s) + (s == widget.order.status ? ' (current)' : '')),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    StatusPill(label: humanizeStatus(order.status), tone: orderTone(order.status)),
-                    const SizedBox(width: 6),
-                    StatusPill(
-                      label: isPaid ? 'Paid' : 'Unpaid',
-                      tone: isPaid ? StatusTone.success : StatusTone.warning,
-                    ),
-                    if (!isPaid && order.status != 'cancelled' && order.status != 'rejected')
-                      IconButton(
-                        tooltip: 'Confirm cash payment',
-                        icon: const Icon(Icons.payments_outlined, color: AppColors.secondary),
-                        onPressed: () => _confirmCash(order),
-                      ),
-                    IconButton(tooltip: 'Change status', icon: const Icon(Icons.edit_outlined), onPressed: () => _changeStatus(order)),
                   ],
                 ),
-              );
-            },
+              ),
+              if (_status == 'cancelled' && widget.order.status != 'cancelled')
+                const Callout(
+                  tone: CalloutTone.warning,
+                  message: 'Cancelling releases the car so other buyers can order it.',
+                ),
+              const SizedBox(height: 4),
+              const Text('The buyer and the seller are notified of the change.', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+            ],
           ),
         ),
-      );
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+        FilledButton(
+          onPressed: _status == widget.order.status ? null : () => Navigator.of(context).pop(_status),
+          child: const Text('Save status'),
+        ),
+      ],
+    );
+  }
+}
+
+class _OrderDetails extends StatelessWidget {
+  final OrderRecord order;
+  const _OrderDetails({required this.order});
+
+  @override
+  Widget build(BuildContext context) {
+    final o = order;
+    Widget row(String l, String v) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 5),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            SizedBox(width: 120, child: Text(l, style: const TextStyle(color: AppColors.textSecondary))),
+            Expanded(child: Text(v, style: const TextStyle(fontWeight: FontWeight.w500))),
+          ]),
+        );
+    return AlertDialog(
+      title: Text('Order #${o.id}'),
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(minWidth: 300, maxWidth: 460),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              row('Car', o.listingTitle),
+              row('Amount', formatInr(o.amount)),
+              row('Status', humanizeStatus(o.status)),
+              row('Payment', humanizeStatus(o.paymentStatus)),
+              row('Buyer', o.buyer == null ? 'User #${o.buyerId}' : '${o.buyer!.displayName} (@${o.buyer!.username})'),
+              row('Seller', o.seller == null ? 'User #${o.sellerId}' : '${o.seller!.displayName} (@${o.seller!.username})'),
+              row('Placed', formatDateTime(o.createdAt)),
+              if (o.updatedAt != null) row('Last change', formatDateTime(o.updatedAt)),
+              if (o.completedAt != null) row('Completed', formatDateTime(o.completedAt)),
+              if ((o.notes ?? '').isNotEmpty) row('Buyer note', o.notes!),
+            ],
+          ),
+        ),
+      ),
+      actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Close'))],
+    );
+  }
 }

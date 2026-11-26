@@ -1,10 +1,8 @@
 import 'package:carzen_flutter/models/service_models.dart';
-import 'package:carzen_flutter/routes/app_routes.dart';
 import 'package:carzen_flutter/services/api_exception.dart';
 import 'package:carzen_flutter/services/service_request_api.dart';
 import 'package:carzen_flutter/theme/app_theme.dart';
 import 'package:carzen_flutter/utils/formatters.dart';
-import 'package:carzen_flutter/widgets/carzen_nav_bar.dart';
 import 'package:carzen_flutter/widgets/network_photo.dart';
 import 'package:carzen_flutter/widgets/page_container.dart';
 import 'package:carzen_flutter/widgets/paged_controller.dart';
@@ -12,6 +10,7 @@ import 'package:carzen_flutter/widgets/pagination_bar.dart';
 import 'package:carzen_flutter/widgets/service_widgets.dart';
 import 'package:carzen_flutter/widgets/state_views.dart';
 import 'package:carzen_flutter/widgets/status_pill.dart';
+import 'package:carzen_flutter/widgets/app_shell.dart';
 import 'package:flutter/material.dart';
 
 /// Admin service-request queue — `/v1/admin/service-requests` (paginated,
@@ -71,9 +70,9 @@ class _AdminServiceRequestsScreenState extends State<AdminServiceRequestsScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: const CarZenNavBar(current: NavSection.adminServiceRequests, title: 'Service Requests', fallbackRoute: AppRoutes.admin),
-      bottomNavigationBar: const CarZenBottomBar(current: NavSection.adminServiceRequests),
+    return AppScaffold(
+      section: NavSection.adminServiceRequests,
+      title: 'Workshop',
       body: SafeArea(
         bottom: false,
         child: RefreshIndicator(
@@ -92,7 +91,6 @@ class _AdminServiceRequestsScreenState extends State<AdminServiceRequestsScreen>
                       subtitle: _paged.meta == null
                           ? 'Review, schedule and complete customer bookings.'
                           : '${formatCount(_paged.meta!.total)} request${_paged.meta!.total == 1 ? '' : 's'} ${_status == null ? 'in total' : 'with status ${_status!.label.toLowerCase()}'}.',
-                      icon: Icons.assignment_rounded,
                     ),
                     const SizedBox(height: AppSpacing.lg),
                     SingleChildScrollView(
@@ -361,7 +359,7 @@ class _RequestSheetState extends State<_RequestSheet> {
                 if (r.car != null) DetailRow('Car', r.car!.label),
                 DetailRow(
                   r.status == ServiceRequestStatus.requested ? 'Requested slot' : 'Confirmed slot',
-                  '${formatDate(r.scheduledDate)} · ${formatClock(r.scheduledTime)}',
+                  '${formatDate(r.scheduledDate)}  |  ${formatClock(r.scheduledTime)}',
                   emphasize: true,
                 ),
                 for (final item in r.items)
@@ -378,16 +376,24 @@ class _RequestSheetState extends State<_RequestSheet> {
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 4),
                   child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SizedBox(
-                        width: 140,
+                        width: 120,
                         child: Text('Payment', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
                       ),
-                      servicePaymentPill(r),
-                      if (r.paymentMethod != null && r.paymentMethod!.isNotEmpty) ...[
-                        const SizedBox(width: 8),
-                        Text('(${r.paymentMethod!})', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                      ],
+                      Expanded(
+                        child: Wrap(
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 8,
+                          runSpacing: 4,
+                          children: [
+                            servicePaymentPill(r),
+                            if (r.paymentMethod != null && r.paymentMethod!.isNotEmpty)
+                              Text('(${r.paymentMethod!})', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -538,8 +544,8 @@ class _ScheduleDialogState extends State<_ScheduleDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text('Schedule request #${widget.request.id}'),
-      content: SizedBox(
-        width: 460,
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 460),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -666,8 +672,8 @@ class _CompleteDialogState extends State<_CompleteDialog> {
 
     return AlertDialog(
       title: Text('Complete request #${widget.request.id}'),
-      content: SizedBox(
-        width: 460,
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 460),
         child: SingleChildScrollView(
           child: Form(
             key: _formKey,

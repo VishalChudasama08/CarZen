@@ -2,7 +2,7 @@ import 'package:carzen_flutter/models/service_models.dart';
 import 'package:carzen_flutter/routes/app_routes.dart';
 import 'package:carzen_flutter/theme/app_theme.dart';
 import 'package:carzen_flutter/utils/formatters.dart';
-import 'package:carzen_flutter/widgets/carzen_nav_bar.dart';
+import 'package:carzen_flutter/widgets/app_shell.dart';
 import 'package:carzen_flutter/widgets/network_photo.dart';
 import 'package:carzen_flutter/widgets/status_pill.dart';
 import 'package:carzen_flutter/widgets/surface_card.dart';
@@ -262,50 +262,77 @@ class RequestProgress extends StatelessWidget {
       );
     }
     final current = _steps.indexOf(status);
-    return Row(
-      children: [
-        for (var i = 0; i < _steps.length; i++) ...[
-          Expanded(
-            child: Column(
-              children: [
-                Container(
-                  width: 26,
-                  height: 26,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: i <= current ? AppColors.secondary : AppColors.surfaceMuted,
-                  ),
-                  child: Icon(
-                    i < current ? Icons.check_rounded : Icons.circle,
-                    size: i < current ? 16 : 8,
-                    color: i <= current ? Colors.white : AppColors.divider,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  _steps[i].label,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 10.5,
-                    fontWeight: i == current ? FontWeight.w800 : FontWeight.w600,
-                    color: i <= current ? AppColors.textPrimary : AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (i < _steps.length - 1)
+    return LayoutBuilder(builder: (context, c) {
+      final labelled = c.maxWidth >= 520;
+      final track = Row(
+        children: [
+          for (var i = 0; i < _steps.length; i++) ...[
             Expanded(
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 22),
-                child: Container(height: 2, color: i < current ? AppColors.secondary : AppColors.surfaceMuted),
+              child: Column(
+                children: [
+                  Container(
+                    width: 26,
+                    height: 26,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: i <= current ? AppColors.chrome : AppColors.surfaceMuted,
+                    ),
+                    child: Icon(
+                      i < current ? Icons.check_rounded : Icons.circle,
+                      size: i < current ? 16 : 8,
+                      color: i <= current ? Colors.white : AppColors.lineStrong,
+                    ),
+                  ),
+                  if (labelled) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      _steps[i].label,
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: i == current ? FontWeight.w700 : FontWeight.w500,
+                        color: i <= current ? AppColors.textPrimary : AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
+            if (i < _steps.length - 1)
+              Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(bottom: labelled ? 22 : 0),
+                  child: Container(height: 2, color: i < current ? AppColors.chrome : AppColors.surfaceMuted),
+                ),
+              ),
+          ],
         ],
-      ],
-    );
+      );
+      final label = current < 0 ? '' : _steps[current].label;
+      return Semantics(
+        label: current < 0 ? null : 'Step ${current + 1} of ${_steps.length}: $label',
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ExcludeSemantics(child: track),
+            if (!labelled && current >= 0) ...[
+              const SizedBox(height: 10),
+              Text.rich(
+                TextSpan(children: [
+                  TextSpan(text: 'Step ${current + 1} of ${_steps.length}: ', style: const TextStyle(color: AppColors.textSecondary)),
+                  TextSpan(text: label, style: const TextStyle(fontWeight: FontWeight.w700)),
+                  if (current < _steps.length - 1)
+                    TextSpan(text: '   Next: ${_steps[current + 1].label}', style: const TextStyle(color: AppColors.textSecondary)),
+                ]),
+                style: const TextStyle(fontSize: 13.5),
+              ),
+            ],
+          ],
+        ),
+      );
+    });
   }
 }
 
@@ -336,10 +363,10 @@ class ServiceRequestCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 44,
-                height: 44,
+                width: 42,
+                height: 42,
                 decoration: BoxDecoration(color: AppColors.cyanTint, borderRadius: BorderRadius.circular(AppRadii.md)),
-                child: const Icon(Icons.build_rounded, color: AppColors.secondary),
+                child: const Icon(Icons.build_rounded, color: AppColors.secondary, size: 22),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -349,27 +376,33 @@ class ServiceRequestCard extends StatelessWidget {
                     Text(r.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 2),
                     Text('Request #${r.id}', style: Theme.of(context).textTheme.bodySmall),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        StatusPill(label: r.status.label, tone: r.status.tone),
+                        if (r.status != ServiceRequestStatus.cancelled && r.status != ServiceRequestStatus.rejected)
+                          servicePaymentPill(r),
+                      ],
+                    ),
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              StatusPill(label: r.status.label, tone: r.status.tone),
-              if (r.status != ServiceRequestStatus.cancelled && r.status != ServiceRequestStatus.rejected) ...[
-                const SizedBox(width: 6),
-                servicePaymentPill(r),
-              ],
             ],
           ),
           const SizedBox(height: 14),
-          Wrap(
-            spacing: 18,
-            runSpacing: 8,
-            children: [
-              _Meta(Icons.event_rounded, '${formatDate(r.scheduledDate)} · ${formatClock(r.scheduledTime)}'),
-              if (r.car != null) _Meta(Icons.directions_car_outlined, r.car!.label),
-              if (showCustomer && r.user != null) _Meta(Icons.person_outline_rounded, r.user!.displayName),
-              _Meta(Icons.currency_rupee_rounded, formatInr(r.payableAmount)),
-            ],
+          LayoutBuilder(
+            builder: (context, c) => Wrap(
+              spacing: 18,
+              runSpacing: 8,
+              children: [
+                _Meta(Icons.event_rounded, '${formatDate(r.scheduledDate)}  |  ${formatClock(r.scheduledTime)}', maxWidth: c.maxWidth),
+                if (r.car != null) _Meta(Icons.directions_car_outlined, r.car!.label, maxWidth: c.maxWidth),
+                if (showCustomer && r.user != null) _Meta(Icons.person_outline_rounded, r.user!.displayName, maxWidth: c.maxWidth),
+                _Meta(Icons.currency_rupee_rounded, formatInr(r.payableAmount), maxWidth: c.maxWidth),
+              ],
+            ),
           ),
           if (footer != null) ...[const SizedBox(height: 12), footer!],
         ],
@@ -381,18 +414,30 @@ class ServiceRequestCard extends StatelessWidget {
 class _Meta extends StatelessWidget {
   final IconData icon;
   final String text;
-  const _Meta(this.icon, this.text);
+  final double? maxWidth;
+  const _Meta(this.icon, this.text, {this.maxWidth});
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    final row = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, size: 16, color: AppColors.textSecondary),
         const SizedBox(width: 5),
-        Flexible(child: Text(text, style: const TextStyle(fontSize: 13, color: AppColors.textPrimary, fontWeight: FontWeight.w600))),
+        Flexible(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 13, color: AppColors.textPrimary, fontWeight: FontWeight.w600),
+          ),
+        ),
       ],
     );
+    if (maxWidth != null) {
+      return ConstrainedBox(constraints: BoxConstraints(maxWidth: maxWidth!), child: row);
+    }
+    return row;
   }
 }
 
@@ -403,8 +448,8 @@ Widget servicePaymentPill(ServiceRequestRecord r) {
   }
   if (r.paymentStatus.toLowerCase() == 'paid') {
     final method = r.paymentMethod?.toLowerCase() == 'online'
-        ? 'Paid · Online'
-        : (r.paymentMethod?.toLowerCase() == 'cash' ? 'Paid · Cash' : 'Paid');
+        ? 'Paid  |  Online'
+        : (r.paymentMethod?.toLowerCase() == 'cash' ? 'Paid  |  Cash' : 'Paid');
     return StatusPill(label: method, tone: StatusTone.success);
   }
   if (r.status == ServiceRequestStatus.completed) {

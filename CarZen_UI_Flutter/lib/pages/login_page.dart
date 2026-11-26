@@ -1,19 +1,21 @@
+import 'package:carzen_flutter/routes/app_routes.dart';
+import 'package:carzen_flutter/services/auth_exception.dart';
+import 'package:carzen_flutter/services/auth_service.dart';
+import 'package:carzen_flutter/services/session_controller.dart';
+import 'package:carzen_flutter/theme/app_theme.dart';
+import 'package:carzen_flutter/utils/validators.dart';
+import 'package:carzen_flutter/widgets/app_shell.dart';
 import 'package:carzen_flutter/widgets/auth_error_banner.dart';
 import 'package:carzen_flutter/widgets/auth_header.dart';
 import 'package:carzen_flutter/widgets/auth_layout.dart';
 import 'package:carzen_flutter/widgets/auth_text_field.dart';
-import 'package:carzen_flutter/widgets/carzen_nav_bar.dart';
 import 'package:carzen_flutter/widgets/primary_button.dart';
-import 'package:carzen_flutter/services/auth_exception.dart';
-import 'package:carzen_flutter/services/auth_service.dart';
-import 'package:carzen_flutter/utils/validators.dart';
-import 'package:carzen_flutter/theme/app_theme.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class LoginPage extends StatefulWidget {
   /// When opened by a protected action, return `true` so that action can
-  /// continue after a successful sign-in instead of sending the visitor to
-  /// a fresh home page.
+  /// continue after a successful sign-in instead of starting over on Home.
   final bool returnToPrevious;
 
   const LoginPage({super.key, this.returnToPrevious = false});
@@ -23,23 +25,45 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _passwordFocusNode = FocusNode();
   final _authService = AuthService();
 
   bool _isLoading = false;
   String? _errorMessage;
 
   @override
+  void initState() {
+    super.initState();
+    _checkExistingSession();
+  }
+
+  /// Someone who is already signed in and opens /login is sent on.
+  Future<void> _checkExistingSession() async {
+    if (widget.returnToPrevious) return;
+    final hasToken = await _authService.hasStoredToken();
+    if (!hasToken || !mounted) return;
+    await SessionController.instance.refresh();
+    if (!mounted) return;
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      SessionController.instance.isAdmin ? AppRoutes.admin : AppRoutes.home,
+      (route) => false,
+    );
+  }
+
+  @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _passwordFocusNode.dispose();
     super.dispose();
   }
 
   Future<void> _handleLogin() async {
+    if (_isLoading) return;
     FocusScope.of(context).unfocus();
     if (!_formKey.currentState!.validate()) return;
 
@@ -49,99 +73,111 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
-      await _authService.login(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-      );
+      await _authService.login(email: _emailController.text.trim(), password: _passwordController.text);
+      if (!mounted) return;
+      TextInput.finishAutofillContext(shouldSave: true);
+      await SessionController.instance.refresh();
       if (!mounted) return;
       if (widget.returnToPrevious) {
         Navigator.of(context).pop(true);
-      } else {
-        Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+        return;
       }
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        SessionController.instance.isAdmin ? AppRoutes.admin : AppRoutes.home,
+        (route) => false,
+      );
     } on AuthException catch (e) {
-      setState(() => _errorMessage = e.message);
+      TextInput.finishAutofillContext(shouldSave: false);
+      if (mounted) {
+        setState(() => _errorMessage = e.message);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _passwordFocusNode.canRequestFocus) {
+            _passwordFocusNode.requestFocus();
+            _passwordController.selection = TextSelection(
+              baseOffset: 0,
+              extentOffset: _passwordController.text.length,
+            );
+          }
+        });
+      }
+    } catch (_) {
+      TextInput.finishAutofillContext(shouldSave: false);
+      if (mounted) {
+        setState(() => _errorMessage = 'Something went wrong. Please check your connection and try again.');
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _passwordFocusNode.canRequestFocus) {
+            _passwordFocusNode.requestFocus();
+          }
+        });
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  void _goToRegister() {
-    Navigator.pushReplacementNamed(context, '/Register');
-  }
-
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: const CarZenNavBar(current: NavSection.login, title: 'Login'),
-      // AppBar(
-      //   // leading: const Icon(Icons.arrow_back),
-      //   title: ClipRRect(
-      //     borderRadius: BorderRadius.circular(8),
-      //     child: Image.asset(
-      //       'assets/images/carzen_logo.png',
-      //       height: 40,
-      //     ),
-      //   ),
-      // ),
-
+    return AppScaffold(
+      section: NavSection.login,
+      title: 'Log in',
       body: AuthLayout(
-        child: Form(
+        sideTitle: 'Welcome back to your garage.',
+        child: AutofillGroup(
+          child: Form(
             key: _formKey,
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const AuthHeader(
-                  title: 'Welcome Back',
-                  subTitle: 'Log in to continue buying, selling and\ntracking your cars on CarZen.',
+                  title: 'Log in',
+                  subTitle: 'Pick up where you left off - saved cars, messages and bookings.',
                 ),
                 if (_errorMessage != null) AuthErrorBanner(message: _errorMessage!),
                 AuthTextField(
                   controller: _emailController,
-                  label: 'Email *',
+                  label: 'Email',
+                  required: true,
                   hint: 'you@example.com',
-                  icon: Icons.mail_outline_rounded,
+                  icon: Icons.mail_outline,
                   keyboardType: TextInputType.emailAddress,
+                  autofillHints: const [AutofillHints.email, AutofillHints.username],
+                  enabled: !_isLoading,
                   validator: Validators.email,
                 ),
                 AuthTextField(
                   controller: _passwordController,
-                  label: 'Password *',
-                  hint: 'Enter your password',
-                  icon: Icons.lock_outline_rounded,
+                  focusNode: _passwordFocusNode,
+                  label: 'Password',
+                  required: true,
+                  hint: 'Your password',
+                  icon: Icons.lock_outline,
                   isPassword: true,
                   textInputAction: TextInputAction.done,
-                  validator: (v) => Validators.required(v, message: 'Password is required'),
+                  autofillHints: const [AutofillHints.password],
+                  enabled: !_isLoading,
+                  onSubmitted: (_) => _handleLogin(),
+                  validator: (v) => Validators.required(v, message: 'Enter your password'),
                 ),
-                const SizedBox(height: 8),
-                PrimaryButton(label: 'Log In', onPressed: _handleLogin, isLoading: _isLoading),
-                const SizedBox(height: 22),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                const SizedBox(height: 4),
+                PrimaryButton(label: 'Log in', onPressed: _handleLogin, isLoading: _isLoading),
+                const SizedBox(height: 20),
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    const Text("Don't have an account? ", style: TextStyle(color: AppColors.textSecondary)),
-                    MouseRegion(
-                      cursor: SystemMouseCursors.click,
-                      child: GestureDetector(
-                        onTap: _isLoading ? null : _goToRegister,
-                        child: const Text(
-                          'Register',
-                          style: TextStyle(
-                            color: AppColors.secondary,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
+                    const Text('New to CarZen?', style: TextStyle(color: AppColors.textSecondary)),
+                    TextButton(
+                      onPressed: _isLoading ? null : () => Navigator.pushReplacementNamed(context, AppRoutes.register),
+                      child: const Text('Create an account'),
                     ),
                   ],
                 ),
               ],
             ),
           ),
+        ),
       ),
     );
   }
-
 }
